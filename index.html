@@ -1,38 +1,290 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
+<!-- Playables SDK -->
+<script>
+// Playables SDK v1.0.0
+(function() {
+  'use strict';
+  if (window.playablesSDK) return;
+  var HANDLER_NAME = 'playablesGameEventHandler';
+  var ANDROID_BRIDGE_NAME = '_MetaPlayablesBridge';
+  var RAF_FRAME_THRESHOLD = 3;
+  var gameReadySent = false;
+  var frameCount = 0;
+  var originalRAF = window.requestAnimationFrame;
+  function hasIOSBridge() {
+    return!!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers[HANDLER_NAME]);
+  }
+  function hasAndroidBridge() {
+    return!!(window[ANDROID_BRIDGE_NAME] && typeof window[ANDROID_BRIDGE_NAME].postEvent === 'function');
+  }
+  function isInIframe() {
+    return!!(window.parent && window.parent!== window);
+  }
+  function sendEvent(eventName, payload) {
+    var message = { type: eventName, payload: payload || {}, timestamp: Date.now() };
+    if (hasIOSBridge()) {
+      try { window.webkit.messageHandlers[HANDLER_NAME].postMessage(message); } catch (e) {}
+      return;
+    }
+    if (hasAndroidBridge()) {
+      try {
+        var p = payload || {};
+        p.__secureToken = window.__fbAndroidBridgeAuthToken || '';
+        p.timestamp = message.timestamp;
+        window[ANDROID_BRIDGE_NAME].postEvent(eventName, JSON.stringify(p));
+      } catch (e) {}
+      return;
+    }
+    if (isInIframe()) {
+      try { window.parent.postMessage(message, '*'); } catch (e) {}
+      return;
+    }
+  }
+  function onFrame() {
+    if (gameReadySent) return;
+    frameCount++;
+    if (frameCount >= RAF_FRAME_THRESHOLD) {
+      gameReadySent = true;
+      sendEvent('game_ready', { frame_count: frameCount, detected_at: Date.now() });
+      return;
+    }
+    originalRAF.call(window, onFrame);
+  }
+  if (originalRAF) {
+    window.requestAnimationFrame = function(callback) {
+      if (!gameReadySent) {
+        return originalRAF.call(window, function(timestamp) {
+          frameCount++;
+          if (frameCount >= RAF_FRAME_THRESHOLD &&!gameReadySent) {
+            gameReadySent = true;
+            sendEvent('game_ready', { frame_count: frameCount, detected_at: Date.now() });
+          }
+          callback(timestamp);
+        });
+      }
+      return originalRAF.call(window, callback);
+    };
+  }
+  if (originalRAF) { originalRAF.call(window, onFrame); }
+})();
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mondo di Orbo</title>
 <style>
-  html,body{margin:0;height:100%;overflow:hidden;background:#e8f4ff}
-  canvas{display:block;width:100%;height:100%}
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #e8f4ff; }
+  canvas { display: block; }
+  #label {
+    position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: rgba(255,255,255,0.9); padding: 8px 14px; border-radius: 12px; font-size: 12px; color: #334155;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+  }
 </style>
 <script type="importmap">
 {
   "imports": {
-    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
     "cannon-es": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"
   }
 }
 </script>
 </head>
 <body>
-<canvas id="c"></canvas>
+<div id="label">Mondo di Orbo • C2 continuous world</div>
+
 <script type="module">
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 
-// Copia qui tutta la parte di terrain, luci, camera, physics del mondo
-// TOGLI la parte di Orbo AI, Orbo mesh, e orbo.png
+// --- Scene ---
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#e8f4ff');
+scene.fog = new THREE.Fog('#e8f4ff', 35, 85);
 
-// Render loop senza Orbo che si muove
+const camera = new THREE.PerspectiveCamera(48, innerWidth/innerHeight, 0.1, 200);
+camera.position.set(0, 22, 24);
+camera.lookAt(0, 0, 0);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+
+// Lights
+const hemi = new THREE.HemisphereLight(0xffffff, 0xe8f4ff, 0.8);
+scene.add(hemi);
+
+const sun = new THREE.DirectionalLight(0xffffff, 1.0);
+sun.position.set(12, 24, 10);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048,2048);
+sun.shadow.camera.left = -45; sun.shadow.camera.right = 45;
+sun.shadow.camera.top = 45; sun.shadow.camera.bottom = -45;
+sun.shadow.camera.near = 1; sun.shadow.camera.far = 60;
+sun.shadow.bias = -0.0005;
+scene.add(sun);
+
+// --- Terrain Height Function ---
+function terrainHeight(x, z) {
+  if (Math.abs(x) > 40 || Math.abs(z) > 40) return 0;
+  let y = 0;
+
+  const d0 = Math.hypot(x, z);
+  if (d0 < 8) {
+    y += -2.5 * 0.5 * (1 + Math.cos(Math.PI * d0 / 8));
+  }
+
+  const ax = -20, az = 0;
+  const dxa = x - ax, dza = z - az;
+  const Wa = 8, Da = 4, La = 7.5, soft = 2;
+  if (Math.abs(dxa) < Wa/2 + 0.5 && Math.abs(dza) < La + soft) {
+    const tx = Math.abs(dxa) / (Wa/2);
+    if (tx < 1) {
+      let yc = -Da * 0.5 * (1 + Math.cos(Math.PI * tx));
+      let fade = 1;
+      const adz = Math.abs(dza);
+      if (adz > La - soft) fade = 0.5 * (1 + Math.cos(Math.PI * (adz - (La - soft)) / soft));
+      if (adz > La) fade *= 0.5 * (1 + Math.cos(Math.PI * Math.min((adz - La)/soft,1)));
+      y += yc * fade;
+    }
+  }
+
+  const vx = 20, vz = -15;
+  const dvx = x - vx, dvz = z - vz;
+  const dv = Math.hypot(dvx, dvz);
+  const Rv = 7, Dv = 3.5;
+  if (dv < Rv) {
+    let base = -Dv * 0.5 * (1 + Math.cos(Math.PI * dv / Rv));
+    const theta = Math.atan2(dvz, dvx);
+    const spiral = 0.22 * (1 - dv/Rv) * Math.sin(4 * theta + dv * 2.2);
+    y += base + spiral;
+  }
+
+  const ox = 0, oz = 20;
+  const dox = x - ox, doz = z - oz;
+  if (Math.abs(dox) < 12 && Math.abs(doz) < 20) {
+    const envX = 0.5 * (1 + Math.cos(Math.PI * dox / 12));
+    const envZ = 0.5 * (1 + Math.cos(Math.PI * doz / 20));
+    const wave = 1.5 * Math.sin((2 * Math.PI * doz) / 8);
+    y += wave * envX * envZ;
+  }
+
+  const px = -15, pz = 15;
+  const dpx = x - px, dpz = z - pz;
+  const dp = Math.hypot(dpx, dpz);
+  const Rp = 4.5, Hp = 1.15;
+  if (dp < Rp) {
+    let base = Hp * 0.5 * (1 + Math.cos(Math.PI * dp / Rp));
+    const dirx = 0.707, dirz = -0.707;
+    const proj = (dpx * dirx + dpz * dirz) / Rp;
+    const tilt = 1 + 0.28 * proj;
+    y += base * tilt;
+  }
+
+  const bumps = [[10,10],[-10,-12],[25,5],[-25,-5],[5,-25],[-5,25],[18,12],[-22,18]];
+  const Rb = 1.5, Hb = 0.62;
+  for (const b of bumps) {
+    const bdx = x - b[0], bdz = z - b[1];
+    const bd = Math.hypot(bdx, bdz);
+    if (bd < Rb) y += Hb * 0.5 * (1 + Math.cos(Math.PI * bd / Rb));
+  }
+
+  return y;
+}
+
+// --- Build Ground Mesh + Physics ---
+const GRID = 129;
+const SIZE = 80;
+const STEP = SIZE / (GRID - 1);
+
+const heightMatrix = [];
+for (let ix = 0; ix < GRID; ix++) {
+  heightMatrix[ix] = [];
+  for (let iz = 0; iz < GRID; iz++) {
+    const x = -40 + ix * STEP;
+    const z = -40 + iz * STEP;
+    heightMatrix[ix][iz] = terrainHeight(x, z);
+  }
+}
+
+const geo = new THREE.PlaneGeometry(SIZE, SIZE, GRID - 1, GRID - 1);
+geo.rotateX(-Math.PI / 2);
+const pos = geo.attributes.position;
+for (let i = 0; i < pos.count; i++) {
+  const x = pos.getX(i);
+  const z = pos.getZ(i);
+  pos.setY(i, terrainHeight(x, z));
+}
+geo.computeVertexNormals();
+
+const groundMat = new THREE.MeshStandardMaterial({
+  color: 0xffffff,
+  roughness: 0.95,
+  metalness: 0.0
+});
+const ground = new THREE.Mesh(geo, groundMat);
+ground.receiveShadow = true;
+scene.add(ground);
+
+const rim = new THREE.Mesh(
+  new THREE.RingGeometry(39.5, 40.5, 128),
+  new THREE.MeshBasicMaterial({ color: 0xd8e9f7, side: 2 })
+);
+rim.rotation.x = -Math.PI/2;
+rim.position.y = 0.02;
+scene.add(rim);
+
+// --- Physics World ---
+const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -9.82, 0) });
+world.broadphase = new CANNON.SAPBroadphase(world);
+world.solver.iterations = 20;
+
+const groundPhysMat = new CANNON.Material('ground');
+const hfShape = new CANNON.Heightfield(heightMatrix, { elementSize: STEP });
+const hfBody = new CANNON.Body({ mass: 0, material: groundPhysMat });
+hfBody.addShape(hfShape);
+hfBody.position.set(-40, 0, -40);
+world.addBody(hfBody);
+
+// --- Nuvole per atmosfera ---
+const cloudGroup = new THREE.Group();
+for(let i = 0; i < 6; i++) {
+  const cloud = new THREE.Mesh(
+    new THREE.SphereGeometry(2 + Math.random(), 12, 12),
+    new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, transparent: true, opacity: 0.8 })
+  );
+  cloud.position.set((Math.random()-0.5) * 50, 15 + Math.random() * 5, (Math.random()-0.5) * 50);
+  cloudGroup.add(cloud);
+}
+scene.add(cloudGroup);
+
+// --- Loop ---
 function animate() {
   requestAnimationFrame(animate);
+  const t = performance.now() / 1000;
+
+  // Anima nuvole lente
+  cloudGroup.children.forEach((cloud, i) => {
+    cloud.position.x += Math.sin(t * 0.2 + i) * 0.02;
+  });
+
   world.step(1/60);
   renderer.render(scene, camera);
 }
 animate();
+
+// Resize
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
 </script>
 </body>
 </html>
