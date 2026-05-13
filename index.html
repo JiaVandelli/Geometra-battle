@@ -3,7 +3,6 @@
 <head>
 <!-- Playables SDK -->
 <script>
-// Playables SDK v1.0.0
 (function() {
   'use strict';
   if (window.playablesSDK) return;
@@ -75,7 +74,7 @@
 <title>Mondo di Orbo</title>
 <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { width: 100%; height: 100%; overflow: hidden; background: #e8f4ff; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #d0ebff; }
   canvas { display: block; }
   #label {
     position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
@@ -101,11 +100,11 @@ import * as CANNON from 'cannon-es';
 
 // --- Scene ---
 const scene = new THREE.Scene();
-scene.background = new THREE.Color('#e8f4ff');
-scene.fog = new THREE.Fog('#e8f4ff', 35, 85);
+scene.background = new THREE.Color('#d0ebff');
+scene.fog = new THREE.Fog('#d0ebff', 25, 70);
 
 const camera = new THREE.PerspectiveCamera(48, innerWidth/innerHeight, 0.1, 200);
-camera.position.set(0, 22, 24);
+camera.position.set(0, 25, 28);
 camera.lookAt(0, 0, 0);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -117,16 +116,16 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 document.body.appendChild(renderer.domElement);
 
 // Lights
-const hemi = new THREE.HemisphereLight(0xffffff, 0xe8f4ff, 0.8);
+const hemi = new THREE.HemisphereLight(0xffffff, 0xd0ebff, 0.9);
 scene.add(hemi);
 
-const sun = new THREE.DirectionalLight(0xffffff, 1.0);
-sun.position.set(12, 24, 10);
+const sun = new THREE.DirectionalLight(0xffffff, 1.2);
+sun.position.set(15, 30, 10);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048,2048);
-sun.shadow.camera.left = -45; sun.shadow.camera.right = 45;
-sun.shadow.camera.top = 45; sun.shadow.camera.bottom = -45;
-sun.shadow.camera.near = 1; sun.shadow.camera.far = 60;
+sun.shadow.camera.left = -50; sun.shadow.camera.right = 50;
+sun.shadow.camera.top = 50; sun.shadow.camera.bottom = -50;
+sun.shadow.camera.near = 1; sun.shadow.camera.far = 80;
 sun.shadow.bias = -0.0005;
 scene.add(sun);
 
@@ -135,11 +134,13 @@ function terrainHeight(x, z) {
   if (Math.abs(x) > 40 || Math.abs(z) > 40) return 0;
   let y = 0;
 
+  // Cuccia - centro
   const d0 = Math.hypot(x, z);
   if (d0 < 8) {
     y += -2.5 * 0.5 * (1 + Math.cos(Math.PI * d0 / 8));
   }
 
+  // Acceleratore -20,0
   const ax = -20, az = 0;
   const dxa = x - ax, dza = z - az;
   const Wa = 8, Da = 4, La = 7.5, soft = 2;
@@ -155,6 +156,7 @@ function terrainHeight(x, z) {
     }
   }
 
+  // Vortice 20,-15
   const vx = 20, vz = -15;
   const dvx = x - vx, dvz = z - vz;
   const dv = Math.hypot(dvx, dvz);
@@ -166,6 +168,7 @@ function terrainHeight(x, z) {
     y += base + spiral;
   }
 
+  // Onde 0,20
   const ox = 0, oz = 20;
   const dox = x - ox, doz = z - oz;
   if (Math.abs(dox) < 12 && Math.abs(doz) < 20) {
@@ -175,6 +178,7 @@ function terrainHeight(x, z) {
     y += wave * envX * envZ;
   }
 
+  // Dosso -15,15
   const px = -15, pz = 15;
   const dpx = x - px, dpz = z - pz;
   const dp = Math.hypot(dpx, dpz);
@@ -187,6 +191,7 @@ function terrainHeight(x, z) {
     y += base * tilt;
   }
 
+  // Bumps
   const bumps = [[10,10],[-10,-12],[25,5],[-25,-5],[5,-25],[-5,25],[18,12],[-22,18]];
   const Rb = 1.5, Hb = 0.62;
   for (const b of bumps) {
@@ -198,7 +203,7 @@ function terrainHeight(x, z) {
   return y;
 }
 
-// --- Build Ground Mesh + Physics ---
+// --- Build Ground Mesh + Colors ---
 const GRID = 129;
 const SIZE = 80;
 const STEP = SIZE / (GRID - 1);
@@ -216,25 +221,57 @@ for (let ix = 0; ix < GRID; ix++) {
 const geo = new THREE.PlaneGeometry(SIZE, SIZE, GRID - 1, GRID - 1);
 geo.rotateX(-Math.PI / 2);
 const pos = geo.attributes.position;
+
+// Colori per zona
+const colors = {
+  cuccia: new THREE.Color(0x4dabf7), // Blu
+  acceleratore: new THREE.Color(0xff6b6b), // Rosso
+  vortice: new THREE.Color(0x845ef7), // Viola
+  onde: new THREE.Color(0x20c997), // Verde
+  dosso: new THREE.Color(0xffa94d), // Arancione
+  piano: new THREE.Color(0xe9ecef) // Grigio chiaro
+};
+
+const colorAttr = [];
 for (let i = 0; i < pos.count; i++) {
   const x = pos.getX(i);
   const z = pos.getZ(i);
-  pos.setY(i, terrainHeight(x, z));
+  const y = terrainHeight(x, z);
+  pos.setY(i, y);
+
+  // Assegna colore per zona
+  let col = colors.piano.clone();
+
+  if (Math.hypot(x, z) < 8) col = colors.cuccia.clone();
+  else if (Math.abs(x + 20) < 4 && Math.abs(z) < 7.5) col = colors.acceleratore.clone();
+  else if (Math.hypot(x - 20, z + 15) < 7) col = colors.vortice.clone();
+  else if (Math.abs(x) < 12 && Math.abs(z - 20) < 20) col = colors.onde.clone();
+  else if (Math.hypot(x + 15, z - 15) < 4.5) col = colors.dosso.clone();
+
+  // Effetto luce: più alto = più chiaro
+  const heightFactor = (y + 3) / 6;
+  col.lerp(new THREE.Color(0xffffff), Math.max(0, Math.min(0.4, heightFactor * 0.4)));
+
+  colorAttr.push(col.r, col.g, col.b);
 }
+
+geo.setAttribute('color', new THREE.Float32BufferAttribute(colorAttr, 3));
 geo.computeVertexNormals();
 
 const groundMat = new THREE.MeshStandardMaterial({
-  color: 0xffffff,
-  roughness: 0.95,
+  vertexColors: true,
+  roughness: 0.8,
   metalness: 0.0
 });
+
 const ground = new THREE.Mesh(geo, groundMat);
 ground.receiveShadow = true;
 scene.add(ground);
 
+// Bordo
 const rim = new THREE.Mesh(
   new THREE.RingGeometry(39.5, 40.5, 128),
-  new THREE.MeshBasicMaterial({ color: 0xd8e9f7, side: 2 })
+  new THREE.MeshBasicMaterial({ color: 0x74c0fc, side: 2 })
 );
 rim.rotation.x = -Math.PI/2;
 rim.position.y = 0.02;
@@ -252,14 +289,14 @@ hfBody.addShape(hfShape);
 hfBody.position.set(-40, 0, -40);
 world.addBody(hfBody);
 
-// --- Nuvole per atmosfera ---
+// --- Nuvole ---
 const cloudGroup = new THREE.Group();
-for(let i = 0; i < 6; i++) {
+for(let i = 0; i < 8; i++) {
   const cloud = new THREE.Mesh(
-    new THREE.SphereGeometry(2 + Math.random(), 12, 12),
-    new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, transparent: true, opacity: 0.8 })
+    new THREE.SphereGeometry(2 + Math.random() * 1.5, 12, 12),
+    new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, transparent: true, opacity: 0.7 })
   );
-  cloud.position.set((Math.random()-0.5) * 50, 15 + Math.random() * 5, (Math.random()-0.5) * 50);
+  cloud.position.set((Math.random()-0.5) * 60, 18 + Math.random() * 8, (Math.random()-0.5) * 60);
   cloudGroup.add(cloud);
 }
 scene.add(cloudGroup);
@@ -269,9 +306,10 @@ function animate() {
   requestAnimationFrame(animate);
   const t = performance.now() / 1000;
 
-  // Anima nuvole lente
+  // Anima nuvole
   cloudGroup.children.forEach((cloud, i) => {
-    cloud.position.x += Math.sin(t * 0.2 + i) * 0.02;
+    cloud.position.x += Math.sin(t * 0.3 + i) * 0.03;
+    cloud.position.z += Math.cos(t * 0.2 + i) * 0.02;
   });
 
   world.step(1/60);
