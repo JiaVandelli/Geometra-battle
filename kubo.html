@@ -25,217 +25,91 @@ canvas{display:block}
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 
-// ===== SCENA =====
 const scene=new THREE.Scene();scene.background=new THREE.Color(0x0A0F1C);scene.fog=new THREE.Fog(0x0A0F1C,30,60);
 const isMobile=/Android|iPhone|iPad/i.test(navigator.userAgent);
-
 const camera=new THREE.PerspectiveCamera(isMobile?75:65,innerWidth/innerHeight,.1,100);
 const renderer=new THREE.WebGLRenderer({antialias:!isMobile,powerPreference:'high-performance'});
-renderer.setSize(innerWidth,innerHeight);
-renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
-renderer.shadowMap.enabled=true;
+renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
 document.body.appendChild(renderer.domElement);
 
-// ===== LUCI =====
 scene.add(new THREE.HemisphereLight(0x1A2A3A,0x0A0F1C,.6));
-const dl=new THREE.DirectionalLight(0x00FFD1,1);
-dl.position.set(10,20,10);dl.castShadow=true;scene.add(dl);
+const dl=new THREE.DirectionalLight(0x00FFD1,1);dl.position.set(10,20,10);scene.add(dl);
 
-// ===== MATERIALI =====
-const ciano=new THREE.MeshStandardMaterial({color:0x00FFD1,emissive:0x00FFD1,emissiveIntensity:.7,roughness:.4,metalness:.2});
-const viola=new THREE.MeshStandardMaterial({color:0xA855F7,emissive:0xA855F7,emissiveIntensity:.85,roughness:.3,metalness:.3});
-const arancio=new THREE.MeshStandardMaterial({color:0xFF6B35,emissive:0xFF6B35,emissiveIntensity:.6,roughness:.5,metalness:.1});
+const ciano=new THREE.MeshStandardMaterial({color:0x00FFD1,emissive:0x00FFD1,emissiveIntensity:.7,roughness:.4});
+const viola=new THREE.MeshStandardMaterial({color:0xA855F7,emissive:0xA855F7,emissiveIntensity:.85,roughness:.3});
+const arancio=new THREE.MeshStandardMaterial({color:0xFF6B35,emissive:0xFF6B35,emissiveIntensity:.6,roughness:.5});
 
-// ===== FISICA =====
-// Gravità alta per dare peso al cubo
 const world=new CANNON.World({gravity:new CANNON.Vec3(0,-13,0)});
 world.allowSleep=false;
 const mat=new CANNON.Material();
-// Attrito alto, rimbalzo basso = il cubo si incastra e ribalta
 world.defaultContactMaterial=new CANNON.ContactMaterial(mat,mat,{friction:0.7,restitution:0.18});
 
-function addStatic(mesh,color=0x00FFD1){
-  mesh.material = mesh.material || new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:.5});
+function addStatic(mesh){
   scene.add(mesh);
-  const g=mesh.geometry.clone();
-  g.applyMatrix4(mesh.matrixWorld);
+  const g=mesh.geometry.clone();g.applyMatrix4(mesh.matrixWorld);
   if(!g.index)g.setIndex([...Array(g.attributes.position.count).keys()]);
   const shape=new CANNON.Trimesh(Array.from(g.attributes.position.array),Array.from(g.index.array));
-  const b=new CANNON.Body({mass:0,material:mat});
-  b.addShape(shape);
-  world.addBody(b);
-  return mesh;
+  const b=new CANNON.Body({mass:0,material:mat});b.addShape(shape);world.addBody(b);
 }
 
-// ===== 1. CATENARIE - Stabilità =====
+// 1. CATENARIE
 const catGroup=new THREE.Group();
-for(let i=0;i<5;i++){
-  const pts=[];
-  for(let j=0;j<=20;j++){
-    const t=j/20;
-    pts.push(new THREE.Vector3(-3+i*1.5,Math.cosh((t-.5)*2.5)*0.7,0))
-  }
-  const mesh=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),16,.08,6,false),ciano);
-  mesh.position.set(0,0.5,-4);
-  catGroup.add(mesh);
-}
-catGroup.children.forEach(m=>{m.updateMatrixWorld();addStatic(m,0x00FFD1)});
+for(let i=0;i<5;i++){const pts=[];for(let j=0;j<=20;j++){const t=j/20;pts.push(new THREE.Vector3(-3+i*1.5,Math.cosh((t-.5)*2.5)*0.7,0))}const m=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),16,.08,6,false),ciano);m.position.set(0,0.5,-4);catGroup.add(m)}
+catGroup.children.forEach(m=>{m.updateMatrixWorld();addStatic(m)});
 
-// ===== 2. BRACHISTOCRONA - Velocità =====
-const r=1.1, ptsB=[];
-for(let i=0;i<=40;i++){
-  const t=i/40*Math.PI*1.3;
-  ptsB.push(new THREE.Vector3(r*(t-Math.sin(t))-2,-r*(1-Math.cos(t))+5,3))
-}
-const brach=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(ptsB),40,.1,8,false),arancio);
-addStatic(brach,0xFF6B35);
+// 2. BRACHISTOCRONA
+const r=1.1,ptsB=[];for(let i=0;i<=40;i++){const t=i/40*Math.PI*1.3;ptsB.push(new THREE.Vector3(r*(t-Math.sin(t))-2,-r*(1-Math.cos(t))+5,3))}addStatic(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(ptsB),40,.1,8,false),arancio));
 
-// ===== 3. ELICA - Rotazione =====
-const ptsH=[];
-for(let i=0;i<=80;i++){
-  const t=i/80,a=t*Math.PI*6;
-  ptsH.push(new THREE.Vector3(Math.cos(a)*0.8,2+t*6,Math.sin(a)*0.8+2))
-}
-const helix=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(ptsH),80,.09,6,false),viola);
-addStatic(helix,0xA855F7);
+// 3. ELICA
+const ptsH=[];for(let i=0;i<=80;i++){const t=i/80,a=t*Math.PI*6;ptsH.push(new THREE.Vector3(Math.cos(a)*0.8,2+t*6,Math.sin(a)*0.8+2))}addStatic(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(ptsH),80,.09,6,false),viola));
 
-// ===== 4. DENTE DI SEGA - Cappottamenti =====
-const sawGroup=new THREE.Group();
-for(let i=0;i<12;i++){
-  const step=new THREE.Mesh(new THREE.BoxGeometry(0.6,0.15,0.8),ciano);
-  step.position.set(3.5+i*0.35,0.3+i*0.22,-2);
-  step.rotation.z=-0.15;
-  sawGroup.add(step);
-}
-sawGroup.children.forEach(m=>{m.updateMatrixWorld();addStatic(m,0x00FFD1)});
+// 4. DENTE DI SEGA
+const saw=new THREE.Group();for(let i=0;i<12;i++){const s=new THREE.Mesh(new THREE.BoxGeometry(0.6,0.15,0.8),ciano);s.position.set(3.5+i*0.35,0.3+i*0.22,-2);s.rotation.z=-0.15;saw.add(s)}saw.children.forEach(m=>{m.updateMatrixWorld();addStatic(m)});
 
-// ===== 5. SELLA - Instabilità =====
-const saddleGeo=new THREE.PlaneGeometry(3,3,20,20);
-const pos=saddleGeo.attributes.position;
-for(let i=0;i<pos.count;i++){
-  const x=pos.getX(i),y=pos.getY(i);
-  pos.setZ(i,0.25*(x*x-y*y))
-}
-saddleGeo.computeVertexNormals();
-saddleGeo.rotateX(-Math.PI/2);
-const saddle=new THREE.Mesh(saddleGeo,ciano);
-saddle.position.set(-3,3.5,2.5);
-addStatic(saddle,0x00FFD1);
+// 5. SELLA - ABBASSATA a 2.8 per non piantarsi
+const saddleGeo=new THREE.PlaneGeometry(3,3,20,20);const pos=saddleGeo.attributes.position;for(let i=0;i<pos.count;i++){const x=pos.getX(i),y=pos.getY(i);pos.setZ(i,0.25*(x*x-y*y))}saddleGeo.computeVertexNormals();saddleGeo.rotateX(-Math.PI/2);const saddle=new THREE.Mesh(saddleGeo,ciano);saddle.position.set(-3,2.8,2.5);addStatic(saddle);
 
-// ===== 6. LOOP =====
-const loop=new THREE.Mesh(new THREE.TorusGeometry(1.1,.12,10,60).rotateX(Math.PI/2),viola);
-loop.position.set(0,9,0);
-addStatic(loop,0xA855F7);
+// 6. LOOP
+const loop=new THREE.Mesh(new THREE.TorusGeometry(1.1,.12,10,60).rotateX(Math.PI/2),viola);loop.position.set(0,9,0);addStatic(loop);
 
-// ===== TERRA =====
-const ground=new CANNON.Body({mass:0,material:mat,shape:new CANNON.Plane()});
-ground.quaternion.setFromEuler(-Math.PI/2,0,0);
-ground.position.y=-0.5;
-world.addBody(ground);
+// TERRA
+const ground=new CANNON.Body({mass:0,material:mat,shape:new CANNON.Plane()});ground.quaternion.setFromEuler(-Math.PI/2,0,0);ground.position.y=-0.5;world.addBody(ground);
 
-// ===== KUBO =====
+// KUBO - FIX: BoxGeometry corretta
 const s=0.26;
-const kuboMesh=new THREE.Mesh(new THREE.BoxGeometry(s,s,2,2,2),viola);
-kuboMesh.castShadow=true;
-kuboMesh.scale.set(0.98,0.98,0.98); // smussa visivamente
+const kuboMesh=new THREE.Mesh(new THREE.BoxGeometry(s,s,s,2,2,2),viola); // era s,s,2
 scene.add(kuboMesh);
+const kubo=new CANNON.Body({mass:2.2,shape:new CANNON.Box(new CANNON.Vec3(s/2,s/2,s/2)),material:mat,linearDamping:.015,angularDamping:.12});
+kubo.position.set(-2,6,3);world.addBody(kubo);
 
-const kubo=new CANNON.Body({
-  mass:2.2,
-  shape:new CANNON.Box(new CANNON.Vec3(s/2,s/2,s/2)),
-  material:mat,
-  linearDamping:.015,
-  angularDamping:.12 // serve per farlo ruotare
-});
-kubo.position.set(-2,6,3);
-world.addBody(kubo);
+const stations=[{pos:new THREE.Vector3(-2,5,3),name:"Brachistocrona"},{pos:new THREE.Vector3(0,0.8,-4),name:"Catenarie"},{pos:new THREE.Vector3(0,9,0),name:"Loop"},{pos:new THREE.Vector3(0,5,2),name:"Elica"},{pos:new THREE.Vector3(3.5,1,-2),name:"Dente di sega"},{pos:new THREE.Vector3(-3,3.1,2.5),name:"Sella"}];
+let idx=0,timer=0,stuckTime=0;
 
-// ===== AI ESPLORATORE =====
-const stations=[
-  {pos:new THREE.Vector3(-2,5,3),name:"Brachistocrona"},
-  {pos:new THREE.Vector3(0,0.8,-4),name:"Catenarie"},
-  {pos:new THREE.Vector3(0,9,0),name:"Loop"},
-  {pos:new THREE.Vector3(0,5,2),name:"Elica"},
-  {pos:new THREE.Vector3(3.5,1,-2),name:"Dente di sega"},
-  {pos:new THREE.Vector3(-3,3.8,2.5),name:"Sella"}
-];
-let idx=0,timer=0;
-
-function nextStation(){
-  idx=(idx+1)%stations.length;
-  document.getElementById('info').textContent=stations[idx].name;
-  timer=4+Math.random()*2
-}
+function nextStation(){idx=(idx+1)%stations.length;document.getElementById('info').textContent=stations[idx].name;timer=4+Math.random()*2}
 
 function ai(dt){
-  timer-=dt;
-  const p=kubo.position,to=stations[idx].pos;
+  timer-=dt;const p=kubo.position,to=stations[idx].pos;const dir=new CANNON.Vec3(to.x-p.x,to.y-p.y,to.z-p.z);
+  if(dir.length()>1){dir.normalize();kubo.applyForce(new CANNON.Vec3(dir.x*5,dir.y*3.5,dir.z*5));kubo.applyTorque(new CANNON.Vec3(dir.z*0.6,0,-dir.x*0.6))}
 
-  // Spinta verso target + coppia per farlo ruotare
-  const dir=new CANNON.Vec3(to.x-p.x,to.y-p.y,to.z-p.z);
-  if(dir.length()>1){
-    dir.normalize();
-    kubo.applyForce(new CANNON.Vec3(dir.x*5,dir.y*3.5,dir.z*5));
-    kubo.applyTorque(new CANNON.Vec3(dir.z*0.6,0,-dir.x*0.6))
-  }
+  // FIX: anti-stuck con timer, non istantaneo
+  if(kubo.velocity.length()<0.4){stuckTime+=dt;if(stuckTime>1.2){kubo.applyImpulse(new CANNON.Vec3((Math.random()-.5)*1.2,0.6,(Math.random()-.5)*1.2));stuckTime=0}}else{stuckTime=0}
 
-  // Anti-stuck generale
-  if(kubo.velocity.length()<0.4){
-    kubo.applyImpulse(new CANNON.Vec3((Math.random()-.5)*1,0.5,(Math.random()-.5)*1));
-  }
-
-  // FIX: Anti-stuck specifico sulla sella
-  if(p.y>3.4 && p.y<3.6 && p.x>-3.2 && p.x<-2.8 && p.z>2.3 && p.z<2.7){
-    kubo.applyImpulse(new CANNON.Vec3((Math.random()-.5)*2,0,2));
-  }
-
-  // Cambio stazione
   if(timer<=0)nextStation();
-
-  // Reset se cade
-  if(p.y<-1){
-    kubo.position.set(-2,6,3);
-    kubo.velocity.set(0,0,0);
-    kubo.angularVelocity.set(0,0,0)
-  }
+  if(p.y<-1){kubo.position.set(-2,6,3);kubo.velocity.set(0,0,0);kubo.angularVelocity.set(0,0,0)}
 }
 
-// ===== CAMERA CINEMATICA =====
 const center=new THREE.Vector3(0,4,0);
-function updateCam(){
-  const t=performance.now()*0.00004; // più lento = più leggibile
-  const r=isMobile?14:18;
-  camera.position.set(Math.cos(t)*r,10+Math.sin(t*0.5)*2,Math.sin(t)*r);
-  camera.lookAt(center)
-}
+function updateCam(){const t=performance.now()*0.00004;const r=isMobile?14:18;camera.position.set(Math.cos(t)*r,10+Math.sin(t*0.5)*2,Math.sin(t)*r);camera.lookAt(center)}
 
-setTimeout(()=>{
-  document.getElementById('hint').style.opacity='0';
-  nextStation();
-  kubo.applyImpulse(new CANNON.Vec3(2,0,1))
-},2000);
+setTimeout(()=>{document.getElementById('hint').style.opacity='0';nextStation();kubo.applyImpulse(new CANNON.Vec3(2,0,1))},2000);
 
 const clock=new THREE.Clock();
-function animate(){
-  requestAnimationFrame(animate);
-  const dt=Math.min(clock.getDelta(),.033);
-  world.step(1/60,dt,3);
-  ai(dt);
-
-  kuboMesh.position.copy(kubo.position);
-  kuboMesh.quaternion.copy(kubo.quaternion);
+function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.033);world.step(1/60,dt,3);ai(dt);
+  kuboMesh.position.copy(kubo.position);kuboMesh.quaternion.copy(kubo.quaternion);
   kuboMesh.material.emissiveIntensity=0.8+Math.sin(performance.now()*0.005)*0.3;
-
-  updateCam();
-  renderer.render(scene,camera)
-}
+  updateCam();renderer.render(scene,camera)}
 animate();
-
-addEventListener('resize',()=>{
-  camera.aspect=innerWidth/innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth,innerHeight)
-});
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
 </script>
 </body>
 </html>
