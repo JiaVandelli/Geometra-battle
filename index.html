@@ -6,47 +6,48 @@
 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<title>Orbo — Playground</title>
+<title>Orbo — Zoo Fisico</title>
 <script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","cannon-es":"https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 <style>
 html,body{margin:0;height:100%;overflow:hidden;background:#87CEEB;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;touch-action:none}
 canvas{display:block}
-#ui{position:fixed;top:16px;left:16px;right:16px;display:flex;justify-content:space-between;pointer-events:none}
-#title{color:#fff;font-weight:800;font-size:22px;text-shadow:0 2px 8px rgba(0,0,0,.3)}
+#ui{position:fixed;top:16px;left:16px;right:16px;display:flex;justify-content:space-between;pointer-events:none;z-index:10}
+#title{color:#fff;font-weight:800;font-size:24px;text-shadow:0 2px 10px rgba(0,0,0,.4)}
 #title span{color:#A855F7}
-#loops{color:#fff;background:rgba(0,0,0,.25);padding:6px 12px;border-radius:20px;font-weight:600;backdrop-filter:blur(4px)}
-#hint{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);color:#fff;background:rgba(0,0,0,.3);padding:8px 16px;border-radius:20px;font-size:14px;pointer-events:none;opacity:.9;transition:opacity.5s}
+#loops{color:#fff;background:rgba(0,0,0,.3);padding:8px 14px;border-radius:20px;font-weight:700;backdrop-filter:blur(6px)}
+#hint{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);color:#fff;background:rgba(0,0,0,.35);padding:10px 18px;border-radius:24px;font-size:15px;pointer-events:none;opacity:1;transition:opacity.8s}
 </style>
 </head>
 <body>
 <div id="ui"><div id="title">orb<span>o</span></div><div id="loops">Loop: 0/3</div></div>
-<div id="hint">Orbo esplora il suo mondo</div>
+<div id="hint">Orbo esplora il suo zoo fisico</div>
 
 <script type="module">
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 
-// SCENA
-const scene=new THREE.Scene();scene.background=new THREE.Color(0x9AD8F5);scene.fog=new THREE.Fog(0x9AD8F5,18,36);
-const camera=new THREE.PerspectiveCamera(50,innerWidth/innerHeight,.1,100);camera.position.set(12,10,12);
+// SCENA - camera più larga per mobile
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x9AD8F5);scene.fog=new THREE.Fog(0x9AD8F5,22,45);
+const camera=new THREE.PerspectiveCamera(60,innerWidth/innerHeight,.1,100); // FOV 60 invece di 50
+camera.position.set(0,14,20);
 const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
 renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
 renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
 // LUCI
-scene.add(new THREE.HemisphereLight(0xffffff,0x7DD3FC,.65));
-const dl=new THREE.DirectionalLight(0xffffff,1);dl.position.set(6,12,8);dl.castShadow=true;dl.shadow.mapSize.set(1024,1024);scene.add(dl);
+scene.add(new THREE.HemisphereLight(0xffffff,0x7DD3FC,.7));
+const dl=new THREE.DirectionalLight(0xffffff,1.1);dl.position.set(8,15,10);dl.castShadow=true;dl.shadow.mapSize.set(1024,1024);scene.add(dl);
 
 // FISICA
 const world=new CANNON.World({gravity:new CANNON.Vec3(0,-9.82,0)});
-world.broadphase=new CANNON.SAPBroadphase(world);world.allowSleep=true;
-const mat=new CANNON.Material();world.defaultContactMaterial=new CANNON.ContactMaterial(mat,mat,{friction:.35,restitution:.22});
+world.broadphase=new CANNON.SAPBroadphase(world);world.allowSleep=false; // no sleep così non si ferma
+const mat=new CANNON.Material();world.defaultContactMaterial=new CANNON.ContactMaterial(mat,mat,{friction:.32,restitution:.25});
 
 // MATERIALI
 const blue=new THREE.MeshStandardMaterial({color:0x7DD3FC,roughness:.45});
 const purple=new THREE.MeshStandardMaterial({color:0xA855F7,roughness:.4});
-const trailMat=new THREE.MeshBasicMaterial({color:0xFF6B35,transparent:true,opacity:.6});
+const trailMat=new THREE.MeshBasicMaterial({color:0xFF6B35,transparent:true,opacity:.65});
 
 function addStatic(mesh){mesh.receiveShadow=true;scene.add(mesh);const g=mesh.geometry.clone();if(!g.index)g.setIndex([...Array(g.attributes.position.count).keys()]);const shape=new CANNON.Trimesh(Array.from(g.attributes.position.array),Array.from(g.index.array));const b=new CANNON.Body({mass:0,material:mat});b.addShape(shape);b.position.copy(mesh.position);b.quaternion.copy(mesh.quaternion);world.addBody(b)}
 
@@ -66,44 +67,58 @@ const sp=[];for(let i=0;i<=100;i++){const t=i/100,a=t*8*Math.PI;sp.push(new THRE
 // TERRA
 const ground=new CANNON.Body({mass:0,material:mat,shape:new CANNON.Plane()});ground.quaternion.setFromEuler(-Math.PI/2,0,0);ground.position.y=-1.2;world.addBody(ground);
 
-// ORBO
-const orboMesh=new THREE.Mesh(new THREE.SphereGeometry(.15,24,24),new THREE.MeshStandardMaterial({color:0xA855F7,emissive:0xA855F7,emissiveIntensity:.75,roughness:.3}));orboMesh.castShadow=true;scene.add(orboMesh);
-const orbo=new CANNON.Body({mass:1,shape:new CANNON.Sphere(.15),material:mat,linearDamping:.04,angularDamping:.04});orbo.position.set(0,1,2.8);world.addBody(orbo);
+// ORBO - più luminoso
+const orboMesh=new THREE.Mesh(new THREE.SphereGeometry(.18,24,24),new THREE.MeshStandardMaterial({color:0xA855F7,emissive:0xA855F7,emissiveIntensity:.9,roughness:.25}));orboMesh.castShadow=true;scene.add(orboMesh);
+const orbo=new CANNON.Body({mass:1,shape:new CANNON.Sphere(.18),material:mat,linearDamping:.03,angularDamping:.03});orbo.position.set(0,2,2.8);world.addBody(orbo);
 
 // SCIA
 const trailGroup=new THREE.Group();scene.add(trailGroup);const pool=[];
-function spawnTrail(pos){let m=pool.pop();if(!m){m=new THREE.Mesh(new THREE.SphereGeometry(.05,8,8),trailMat.clone())}m.position.copy(pos);m.material.opacity=.6;m.scale.set(1,1,1);trailGroup.add(m);setTimeout(()=>{trailGroup.remove(m);pool.push(m)},400)}
+function spawnTrail(pos){let m=pool.pop();if(!m){m=new THREE.Mesh(new THREE.SphereGeometry(.06,8,8),trailMat.clone())}m.position.copy(pos);m.material.opacity=.65;m.scale.set(1,1,1);trailGroup.add(m);setTimeout(()=>{trailGroup.remove(m);pool.push(m)},500)}
 
-// AI
-let target=new THREE.Vector3(0,12,-1.2),timer=3,loops=0,lastLoop=0,done=false;
-const targets=[new THREE.Vector3(0,12,-1.2),new THREE.Vector3(2,9.9,-.5),new THREE.Vector3(-2.8,6.5,0),new THREE.Vector3(0,3.2,0),new THREE.Vector3(0,.8,2.8)];
-const pick=()=>{target=targets[Math.floor(Math.random()*targets.length)];timer=3+Math.random()*2};
+// AI CURIOSA - più forte
+let target=new THREE.Vector3(0,12,-1.2),timer=2,loops=0,lastLoop=0,done=false;
+const targets=[new THREE.Vector3(0,12,-1.2),new THREE.Vector3(2,9.9,-.5),new THREE.Vector3(-2.8,6.5,0),new THREE.Vector3(0,3.2,0),new THREE.Vector3(0,.8,2.8),new THREE.Vector3(1.5,7,1)];
+const pick=()=>{target=targets[Math.floor(Math.random()*targets.length)];timer=2+Math.random()*1.5};
 
 function ai(dt){
   timer-=dt;const pos=orbo.position,vel=orbo.velocity.length();
+  // curiosità: cambia target spesso
   const to=new CANNON.Vec3(target.x-pos.x,target.y-pos.y,target.z-pos.z);
-  if(to.length()>1){to.normalize();orbo.applyForce(new CANNON.Vec3(to.x*1.4,to.y*1.2,to.z*1.4))}
-  if(pos.y<1.4)orbo.applyForce(new CANNON.Vec3(0,1.8,0));
+  if(to.length()>0.8){to.normalize();orbo.applyForce(new CANNON.Vec3(to.x*2.2,to.y*1.8,to.z*2.2))} // forza aumentata
+  // se è fermo, spingilo
+  if(vel<0.5){orbo.applyImpulse(new CANNON.Vec3((Math.random()-.5)*0.8,0.2,(Math.random()-.5)*0.8),pos)}
+  if(pos.y<1.5)orbo.applyForce(new CANNON.Vec3(0,2.2,0));
   if(timer<=0)pick();
-  if(pos.y<-5||Math.abs(pos.x)>12||Math.abs(pos.z)>12){orbo.position.set(0,14,0);orbo.velocity.set(0,0,0);orbo.angularVelocity.set(0,0,0);loops=0;document.getElementById('loops').textContent='Loop: 0/3';done=false}
-  if(vel>4&&Math.random()<.3)spawnTrail(orboMesh.position);
+  // reset
+  if(pos.y<-3||Math.abs(pos.x)>15||Math.abs(pos.z)>15){orbo.position.set(0,14,0);orbo.velocity.set(0,0,0);loops=0;document.getElementById('loops').textContent='Loop: 0/3';done=false;pick()}
+  if(vel>3.5&&Math.random()<.4)spawnTrail(orboMesh.position);
   const d=pos.distanceTo(new CANNON.Vec3(0,12,-1.2));
-  if(d<1.1&&pos.y>11.6&&Date.now()-lastLoop>2000&&vel>2.5){loops++;lastLoop=Date.now();document.getElementById('loops').textContent=`Loop: ${loops}/3`;if(loops>=3&&!done){done=true;window.playablesSDK.complete(loops)}}
+  if(d<1.2&&pos.y>11.5&&Date.now()-lastLoop>1800&&vel>2.2){loops++;lastLoop=Date.now();document.getElementById('loops').textContent=`Loop: ${loops}/3`;if(loops>=3&&!done){done=true;window.playablesSDK.complete(loops)}}
 }
 
-// SIMULA INTERACTION PER META (visto che è autoplay)
-setTimeout(()=>{window.playablesSDK.sendEvent('user_interaction_start');document.getElementById('hint').style.opacity='0'},3000);
+// CAMERA ZOO - vede tutto
+const center=new THREE.Vector3(0,6,0);
+function updateCamera(){
+  const t=performance.now()*.0001;
+  const radius=19; // più lontano
+  const height=14;
+  camera.position.set(Math.cos(t)*radius, height + Math.sin(t*0.4)*2, Math.sin(t)*radius);
+  camera.lookAt(center);
+}
 
-// LOOP
+// START
+setTimeout(()=>{window.playablesSDK.sendEvent('user_interaction_start');document.getElementById('hint').style.opacity='0';orbo.applyImpulse(new CANNON.Vec3(1,0,0.5),orbo.position)},2500);
+
 const clock=new THREE.Clock();
 function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.033);world.step(1/60,dt,3);ai(dt);
   orboMesh.position.copy(orbo.position);orboMesh.quaternion.copy(orbo.quaternion);
-  trailGroup.children.forEach(c=>{if(c.material.opacity>0){c.material.opacity-=dt*2;c.scale.multiplyScalar(.96)}});
-  const t=performance.now()*.00018;camera.position.set(Math.cos(t)*14,9+Math.sin(t*.5),Math.sin(t)*14);camera.lookAt(orboMesh.position);
+  orboMesh.material.emissiveIntensity=0.8+Math.sin(performance.now()*0.003)*0.2;
+  trailGroup.children.forEach(c=>{if(c.material.opacity>0){c.material.opacity-=dt*1.8;c.scale.multiplyScalar(.97)}});
+  updateCamera();
   renderer.render(scene,camera)}
 animate();
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
-setTimeout(()=>orbo.applyImpulse(new CANNON.Vec3(.5,0,.3),orbo.position),800);
+pick();
 </script>
 </body>
 </html>
