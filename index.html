@@ -1,530 +1,109 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="it">
 <head>
 <!-- Playables SDK -->
-<script>// Playables SDK v1.0.0
-(function() {
-  'use strict';
-  if (window.playablesSDK) return;
-  var HANDLER_NAME = 'playablesGameEventHandler';
-  var ANDROID_BRIDGE_NAME = '_MetaPlayablesBridge';
-  var RAF_FRAME_THRESHOLD = 3;
-  var gameReadySent = false;
-  var firstInteractionSent = false;
-  var errorSent = false;
-  var frameCount = 0;
-  var originalRAF = window.requestAnimationFrame;
+<script>(function(){'use strict';if(window.playablesSDK)return;var H='playablesGameEventHandler',A='_MetaPlayablesBridge',g=false,f=false,e=false,c=0,o=window.requestAnimationFrame;function i(){return!!(window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers[H])}function a(){return!!(window[A]&&typeof window[A].postEvent==='function')}function s(){return!!(window.parent&&window.parent!==window)}function d(n,p){var m={type:n,payload:p||{},timestamp:Date.now()};if(i()){try{window.webkit.messageHandlers[H].postMessage(m)}catch{}return}if(a()){try{var q=p||{};q.__secureToken=window.__fbAndroidBridgeAuthToken||'';q.timestamp=m.timestamp;window[A].postEvent(n,JSON.stringify(q))}catch{}return}if(s()){try{window.parent.postMessage(m,'*')}catch{}}}function l(){if(g)return;c++;if(c>=3){g=true;d('game_ready',{frame_count:c})}}if(o){window.requestAnimationFrame=function(t){if(!g){return o.call(window,function(ts){c++;if(c>=3&&!g){g=true;d('game_ready',{frame_count:c})}t(ts)})}return o.call(window,t)}}function u(){var ev=['touchstart','mousedown','keydown'];function on(){if(f)return;f=true;d('user_interaction_start');ev.forEach(e=>document.removeEventListener(e,on,true))}ev.forEach(e=>document.addEventListener(e,on,true))}document.readyState==='loading'?document.addEventListener('DOMContentLoaded',u):u();window.addEventListener('error',ev=>{if(e)return;e=true;d('error',{message:ev.message,source:ev.filename,lineno:ev.lineno})});window.playablesSDK={complete:s=>d('game_ended',{score:s,completed:true}),error:m=>{if(e)return;e=true;d('error',{message:m})},sendEvent:d};if(o)o.call(window,l)})();</script>
 
-  function hasIOSBridge() {
-    return!!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers[HANDLER_NAME]);
-  }
-  function hasAndroidBridge() {
-    return!!(window[ANDROID_BRIDGE_NAME] && typeof window[ANDROID_BRIDGE_NAME].postEvent === 'function');
-  }
-  function isInIframe() {
-    return!!(window.parent && window.parent!== window);
-  }
-  function sendEvent(eventName, payload) {
-    var message = { type: eventName, payload: payload || {}, timestamp: Date.now() };
-    if (hasIOSBridge()) {
-      try { window.webkit.messageHandlers[HANDLER_NAME].postMessage(message); } catch (e) {}
-      return;
-    }
-    if (hasAndroidBridge()) {
-      try {
-        var p = payload || {};
-        p.__secureToken = window.__fbAndroidBridgeAuthToken || '';
-        p.timestamp = message.timestamp;
-        window[ANDROID_BRIDGE_NAME].postEvent(eventName, JSON.stringify(p));
-      } catch (e) {}
-      return;
-    }
-    if (isInIframe()) {
-      try { window.parent.postMessage(message, '*'); } catch (e) {}
-      return;
-    }
-  }
-
-  function onFrame() {
-    if (gameReadySent) return;
-    frameCount++;
-    if (frameCount >= RAF_FRAME_THRESHOLD) {
-      gameReadySent = true;
-      sendEvent('game_ready', { frame_count: frameCount, detected_at: Date.now() });
-      return;
-    }
-    originalRAF.call(window, onFrame);
-  }
-
-  if (originalRAF) {
-    window.requestAnimationFrame = function(callback) {
-      if (!gameReadySent) {
-        return originalRAF.call(window, function(timestamp) {
-          frameCount++;
-          if (frameCount >= RAF_FRAME_THRESHOLD &&!gameReadySent) {
-            gameReadySent = true;
-            sendEvent('game_ready', { frame_count: frameCount, detected_at: Date.now() });
-          }
-          callback(timestamp);
-        });
-      }
-      return originalRAF.call(window, callback);
-    };
-  }
-
-  function setupFirstInteractionDetection() {
-    var events = ['touchstart', 'mousedown', 'keydown'];
-    function onFirstInteraction() {
-      if (firstInteractionSent) return;
-      firstInteractionSent = true;
-      sendEvent('user_interaction_start', null);
-      for (var i = 0; i < events.length; i++) {
-        document.removeEventListener(events[i], onFirstInteraction, true);
-      }
-    }
-    for (var i = 0; i < events.length; i++) {
-      document.addEventListener(events[i], onFirstInteraction, true);
-    }
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', setupFirstInteractionDetection);
-  } else {
-    setupFirstInteractionDetection();
-  }
-
-  window.addEventListener('error', function(event) {
-    if (errorSent) return;
-    errorSent = true;
-    sendEvent('error', { message: event.message || 'Unknown error', source: event.filename || '', lineno: event.lineno || 0, colno: event.colno || 0, auto_captured: true });
-  });
-
-  window.addEventListener('unhandledrejection', function(event) {
-    if (errorSent) return;
-    errorSent = true;
-    var reason = event.reason;
-    sendEvent('error', { message: (reason instanceof Error)? reason.message : String(reason), type: 'unhandled_promise_rejection', auto_captured: true });
-  });
-
-  window.playablesSDK = {
-    complete: function(score) { sendEvent('game_ended', { score: score, completed: true }); },
-    error: function(message) { if (errorSent) return; errorSent = true; sendEvent('error', { message: message || 'Unknown error', auto_captured: false }); },
-    sendEvent: function(eventName, payload) { if (!eventName || typeof eventName!== 'string') return; sendEvent(eventName, payload); }
-  };
-
-  if (originalRAF) { originalRAF.call(window, onFrame); }
-})();</script>
-
-<script>window.Intl=window.Intl||{};Intl.t=function(s){return(Intl._locale&&Intl._locale[s])||s;};</script>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-<title>Orbo Vivo v1</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Orbo — Playground</title>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","cannon-es":"https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 <style>
-  html,body{margin:0;height:100%;background:#071019;overflow:hidden;overscroll-behavior:none;font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto}
-  #c{display:block;width:100vw;height:100vh}
- .glass{backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);background:rgba(8,18,28,.55);border:1px solid rgba(255,255,255,.08)}
+html,body{margin:0;height:100%;overflow:hidden;background:#87CEEB;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;touch-action:none}
+canvas{display:block}
+#ui{position:fixed;top:16px;left:16px;right:16px;display:flex;justify-content:space-between;pointer-events:none}
+#title{color:#fff;font-weight:800;font-size:22px;text-shadow:0 2px 8px rgba(0,0,0,.3)}
+#title span{color:#A855F7}
+#loops{color:#fff;background:rgba(0,0,0,.25);padding:6px 12px;border-radius:20px;font-weight:600;backdrop-filter:blur(4px)}
+#hint{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);color:#fff;background:rgba(0,0,0,.3);padding:8px 16px;border-radius:20px;font-size:14px;pointer-events:none;opacity:.9;transition:opacity.5s}
 </style>
-<script src="https://cdn.tailwindcss.com"></script>
-<script type="importmap">
-{
-  "imports": {
-    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
-    "cannon-es": "https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js"
-  }
-}
-</script>
 </head>
-<body class="select-none touch-none">
-<canvas id="c"></canvas>
-
-<div class="fixed top-3 left-3 right-3 flex justify-between items-start pointer-events-none">
-  <div class="glass rounded-2xl px-4 py-3 text-white shadow-lg pointer-events-auto">
-    <div class="text-[11px] uppercase tracking-[0.18em] opacity-70">Three.js + cannon-es</div>
-    <div class="text-xl font-semibold -mt-0.5">Orbo Vivo <span class="opacity-60 font-medium">v1</span></div>
-    <div class="text-xs opacity-80 mt-1">tap = new target • drag = nudge</div>
-  </div>
-  <div class="glass rounded-full px-3 py-2 text-white text-xs pointer-events-auto">
-    <span id="state" class="opacity-90">wandering</span>
-  </div>
-</div>
-
-<div class="fixed bottom-3 left-1/2 -translate-x-1/2 glass rounded-full px-4 py-2 text-white text-xs flex gap-3 items-center">
-  <span class="w-2 h-2 rounded-full bg-orange-400 animate-pulse"></span>
-  <span>soft ground • fog • squash & stretch • blinks • wobble</span>
-</div>
+<body>
+<div id="ui"><div id="title">orb<span>o</span></div><div id="loops">Loop: 0/3</div></div>
+<div id="hint">Orbo esplora il suo mondo</div>
 
 <script type="module">
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 
-// ===== Scene =====
-const canvas = document.getElementById('c');
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x87c6f5);
-scene.fog = new THREE.Fog(0xb8e0ff, 22, 68);
+// SCENA
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x9AD8F5);scene.fog=new THREE.Fog(0x9AD8F5,18,36);
+const camera=new THREE.PerspectiveCamera(50,innerWidth/innerHeight,.1,100);camera.position.set(12,10,12);
+const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
+renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
 
-const camera = new THREE.PerspectiveCamera(52, innerWidth/innerHeight, 0.1, 200);
-camera.position.set(8,6,12);
-const renderer = new THREE.WebGLRenderer({canvas, antialias:true, powerPreference:'high-performance'});
-renderer.setPixelRatio(Math.min(devicePixelRatio,2));
-renderer.setSize(innerWidth, innerHeight);
-renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+// LUCI
+scene.add(new THREE.HemisphereLight(0xffffff,0x7DD3FC,.65));
+const dl=new THREE.DirectionalLight(0xffffff,1);dl.position.set(6,12,8);dl.castShadow=true;dl.shadow.mapSize.set(1024,1024);scene.add(dl);
 
-// Lights
-const hemi = new THREE.HemisphereLight(0xffffff, 0x5a8fb3, 0.85);
-scene.add(hemi);
-const sun = new THREE.DirectionalLight(0xffffff, 1.0);
-sun.position.set(6,14,7);
-sun.castShadow = true;
-sun.shadow.mapSize.set(1024,1024);
-sun.shadow.camera.near = 1;
-sun.shadow.camera.far = 50;
-sun.shadow.camera.left = -25; sun.shadow.camera.right = 25;
-sun.shadow.camera.top = 25; sun.shadow.camera.bottom = -25;
-scene.add(sun);
+// FISICA
+const world=new CANNON.World({gravity:new CANNON.Vec3(0,-9.82,0)});
+world.broadphase=new CANNON.SAPBroadphase(world);world.allowSleep=true;
+const mat=new CANNON.Material();world.defaultContactMaterial=new CANNON.ContactMaterial(mat,mat,{friction:.35,restitution:.22});
 
-// ===== Ground =====
-const gCanvas = document.createElement('canvas'); gCanvas.width=1024; gCanvas.height=1024;
-const gtx = gCanvas.getContext('2d');
-const grd = gtx.createRadialGradient(512,512,50,512,512,520);
-grd.addColorStop(0,'#d8f1ff');
-grd.addColorStop(0.45,'#a8d9fb');
-grd.addColorStop(1,'#6fb8f0');
-gtx.fillStyle = grd; gtx.fillRect(0,0,1024,1024);
-gtx.globalAlpha = 0.06;
-for(let i=0;i<4000;i++){ gtx.fillRect(Math.random()*1024,Math.random()*1024,2,2); }
-const groundTex = new THREE.CanvasTexture(gCanvas);
-groundTex.anisotropy = 4;
-groundTex.wrapS = groundTex.wrapT = THREE.RepeatWrapping;
+// MATERIALI
+const blue=new THREE.MeshStandardMaterial({color:0x7DD3FC,roughness:.45});
+const purple=new THREE.MeshStandardMaterial({color:0xA855F7,roughness:.4});
+const trailMat=new THREE.MeshBasicMaterial({color:0xFF6B35,transparent:true,opacity:.6});
 
-const groundMat = new THREE.MeshStandardMaterial({ map:groundTex, roughness:0.95, metalness:0 });
-const ground = new THREE.Mesh(new THREE.PlaneGeometry(140,140), groundMat);
-ground.rotation.x = -Math.PI/2;
-ground.receiveShadow = true;
-scene.add(ground);
+function addStatic(mesh){mesh.receiveShadow=true;scene.add(mesh);const g=mesh.geometry.clone();if(!g.index)g.setIndex([...Array(g.attributes.position.count).keys()]);const shape=new CANNON.Trimesh(Array.from(g.attributes.position.array),Array.from(g.index.array));const b=new CANNON.Body({mass:0,material:mat});b.addShape(shape);b.position.copy(mesh.position);b.quaternion.copy(mesh.quaternion);world.addBody(b)}
 
-const rim = new THREE.Mesh(new THREE.RingGeometry(68,70,128), new THREE.MeshBasicMaterial({color:0x5aa6dd, transparent:true, opacity:0.25}));
-rim.rotation.x = -Math.PI/2; rim.position.y = 0.005;
-scene.add(rim);
+// 1 HALF-PIPE
+const hp=new THREE.Mesh(new THREE.CylinderGeometry(1.5,1.5,3,24,1,true,0,Math.PI).rotateX(Math.PI/2).rotateZ(Math.PI),blue);hp.position.set(0,.5,2.8);addStatic(hp);
+// 2 SELLA
+const sg=new THREE.PlaneGeometry(4,4,32,32);const p=sg.attributes.position;for(let i=0;i<p.count;i++)p.setZ(i,.18*(p.getX(i)**2-p.getY(i)**2));sg.computeVertexNormals();sg.rotateX(-Math.PI/2);const saddle=new THREE.Mesh(sg,blue);saddle.position.y=3;addStatic(saddle);
+// 3 VORTEX
+const fg=new THREE.ConeGeometry(2,1.5,32,1,true).rotateX(Math.PI);fg.computeVertexNormals();const funnel=new THREE.Mesh(fg,purple);funnel.material.side=THREE.DoubleSide;funnel.position.set(-2.8,6,0);addStatic(funnel);
+// 4 BRACHISTOCHRONE
+const r=.9,tM=1.4*Math.PI,pts=[];for(let i=0;i<=80;i++){const t=i/80*tM;pts.push(new THREE.Vector3(r*(t-Math.sin(t)),-r*(1-Math.cos(t)),0))}const bg=new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),100,.18,10,false).rotateY(Math.PI).rotateZ(-.15);const brach=new THREE.Mesh(bg,purple);brach.position.set(2,9.92,-.5);addStatic(brach);
+// 5 LOOP
+const lg=new THREE.TorusGeometry(1,.14,12,80).rotateX(Math.PI/2);const loop=new THREE.Mesh(lg,purple);loop.position.set(0,12,-1.2);addStatic(loop);
+// 6 VITE
+const sp=[];for(let i=0;i<=100;i++){const t=i/100,a=t*8*Math.PI;sp.push(new THREE.Vector3(.6*Math.cos(a),1+t*11,.6*Math.sin(a)))}const screw=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(sp),100,.15,8,false),purple);addStatic(screw);
 
-// ===== Physics =====
-const world = new CANNON.World({ gravity:new CANNON.Vec3(0,-9.82,0) });
-world.broadphase = new CANNON.SAPBroadphase(world);
-world.allowSleep = true;
-world.defaultContactMaterial.friction = 0.7;
-world.defaultContactMaterial.restitution = 0.15;
+// TERRA
+const ground=new CANNON.Body({mass:0,material:mat,shape:new CANNON.Plane()});ground.quaternion.setFromEuler(-Math.PI/2,0,0);ground.position.y=-1.2;world.addBody(ground);
 
-const groundBody = new CANNON.Body({ type:CANNON.Body.STATIC, shape:new CANNON.Plane() });
-groundBody.quaternion.setFromEuler(-Math.PI/2,0,0);
-world.addBody(groundBody);
+// ORBO
+const orboMesh=new THREE.Mesh(new THREE.SphereGeometry(.15,24,24),new THREE.MeshStandardMaterial({color:0xA855F7,emissive:0xA855F7,emissiveIntensity:.75,roughness:.3}));orboMesh.castShadow=true;scene.add(orboMesh);
+const orbo=new CANNON.Body({mass:1,shape:new CANNON.Sphere(.15),material:mat,linearDamping:.04,angularDamping:.04});orbo.position.set(0,1,2.8);world.addBody(orbo);
 
-// ===== Zones =====
-const zones = [];
-function addZone(x,z,color,name){
-  const m = new THREE.Mesh(new THREE.CircleGeometry(4.2,48),
-    new THREE.MeshStandardMaterial({ color, roughness:1, metalness:0, transparent:true, opacity:0.55 }));
-  m.rotation.x = -Math.PI/2; m.position.set(x,0.012,z);
-  scene.add(m);
-  zones.push({x,z,r:4.2,color,name,mesh:m});
-}
-addZone(-13,-8,0xff9ec6,'blush');
-addZone(14,-10,0x9ef5c6,'mint');
-addZone(-10,13,0xc6b3ff,'lavender');
-addZone(16,11,0xffd59e,'peach');
+// SCIA
+const trailGroup=new THREE.Group();scene.add(trailGroup);const pool=[];
+function spawnTrail(pos){let m=pool.pop();if(!m){m=new THREE.Mesh(new THREE.SphereGeometry(.05,8,8),trailMat.clone())}m.position.copy(pos);m.material.opacity=.6;m.scale.set(1,1,1);trailGroup.add(m);setTimeout(()=>{trailGroup.remove(m);pool.push(m)},400)}
 
-// ===== House =====
-const house = new THREE.Group(); house.position.set(0,0,-19);
-const hBase = new THREE.Mesh(new THREE.BoxGeometry(3.4,2.0,3.4), new THREE.MeshStandardMaterial({color:0xfff1d6, roughness:0.85}));
-hBase.position.y=1; hBase.castShadow=true; hBase.receiveShadow=true;
-house.add(hBase);
-const roof = new THREE.Mesh(new THREE.ConeGeometry(2.6,1.4,4), new THREE.MeshStandardMaterial({color:0xff7b5a, roughness:0.6}));
-roof.position.y=2.7; roof.rotation.y=Math.PI/4; roof.castShadow=true;
-house.add(roof);
-const door = new THREE.Mesh(new THREE.PlaneGeometry(0.9,1.3), new THREE.MeshStandardMaterial({color:0x5a3a22}));
-door.position.set(0,0.65,1.71);
-house.add(door);
-scene.add(house);
-const houseBody = new CANNON.Body({type:CANNON.Body.STATIC});
-houseBody.addShape(new CANNON.Box(new CANNON.Vec3(1.7,1,1.7)), new CANNON.Vec3(0,1,-19));
-world.addBody(houseBody);
+// AI
+let target=new THREE.Vector3(0,12,-1.2),timer=3,loops=0,lastLoop=0,done=false;
+const targets=[new THREE.Vector3(0,12,-1.2),new THREE.Vector3(2,9.9,-.5),new THREE.Vector3(-2.8,6.5,0),new THREE.Vector3(0,3.2,0),new THREE.Vector3(0,.8,2.8)];
+const pick=()=>{target=targets[Math.floor(Math.random()*targets.length)];timer=3+Math.random()*2};
 
-// ===== Accelerator =====
-const acc = new THREE.Group(); acc.position.set(-18.5,0, -0.5);
-const accBase = new THREE.Mesh(new THREE.CircleGeometry(2.3,48),
-  new THREE.MeshStandardMaterial({color:0x062631, emissive:0x00bcd4, emissiveIntensity:0.35, transparent:true, opacity:0.65}));
-accBase.rotation.x=-Math.PI/2; accBase.position.y=0.011;
-acc.add(accBase);
-const accRing = new THREE.Mesh(new THREE.TorusGeometry(2.0,0.12,16,64),
-  new THREE.MeshStandardMaterial({color:0x22e5ff, emissive:0x00a6c9, emissiveIntensity:0.9, metalness:0.2, roughness:0.3}));
-accRing.rotation.x=Math.PI/2; accRing.position.y=0.14;
-acc.add(accRing);
-scene.add(acc);
-
-// ===== Vortex =====
-const vortex = new THREE.Group(); vortex.position.set(18.5,0,1);
-const vBase = new THREE.Mesh(new THREE.CylinderGeometry(2.6,3.1,0.28,48),
-  new THREE.MeshStandardMaterial({color:0x251047, emissive:0x7b1fa2, emissiveIntensity:0.55, roughness:0.7}));
-vBase.position.y=0.14;
-vortex.add(vBase);
-const vCore = new THREE.Mesh(new THREE.CylinderGeometry(0.25,1.7,1.1,40,1,true),
-  new THREE.MeshStandardMaterial({color:0xab47bc, emissive:0xe1bee7, emissiveIntensity:0.75, transparent:true, opacity:0.62, side:THREE.DoubleSide}));
-vCore.position.y=0.7;
-vortex.add(vCore);
-const puffGeo = new THREE.BufferGeometry();
-const puffCnt=60; const puffPos=new Float32Array(puffCnt*3);
-for(let i=0;i<puffCnt;i++){ const a=i/puffCnt*Math.PI*2+Math.random()*0.2; const r=1.2+Math.random()*1.4; puffPos[i*3]=Math.cos(a)*r; puffPos[i*3+1]=0.2+Math.random()*0.9; puffPos[i*3+2]=Math.sin(a)*r; }
-puffGeo.setAttribute('position', new THREE.BufferAttribute(puffPos,3));
-const puffs = new THREE.Points(puffGeo, new THREE.PointsMaterial({size:0.13, color:0xe7d0f5, transparent:true, opacity:0.85}));
-vortex.add(puffs);
-scene.add(vortex);
-
-// ===== Orbo =====
-const orbo = new THREE.Group(); scene.add(orbo);
-const bodyMat = new THREE.MeshStandardMaterial({ color:0xff8a3c, roughness:0.35, metalness:0.05, emissive:0xff4a12, emissiveIntensity:0.35 });
-const body = new THREE.Mesh(new THREE.SphereGeometry(0.8,32,24), bodyMat);
-body.castShadow = true; body.receiveShadow = true;
-orbo.add(body);
-
-const eyeMat = new THREE.MeshStandardMaterial({ color:0xffffff, roughness:0.15, metalness:0 });
-const eyeGeo = new THREE.SphereGeometry(0.19,20,16);
-const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
-const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
-leftEye.position.set(-0.33,0.34,0.62);
-rightEye.position.set(0.33,0.34,0.62);
-leftEye.castShadow = true; rightEye.castShadow = true;
-orbo.add(leftEye, rightEye);
-
-const pupilMat = new THREE.MeshStandardMaterial({ color:0x0b0b0b, roughness:0.2 });
-const pupilGeo = new THREE.SphereGeometry(0.075,16,12);
-const leftPupil = new THREE.Mesh(pupilGeo, pupilMat);
-const rightPupil = new THREE.Mesh(pupilGeo, pupilMat);
-leftPupil.position.set(0,0,0.125);
-rightPupil.position.set(0,0,0.125);
-leftEye.add(leftPupil); rightEye.add(rightPupil);
-
-const blushMat = new THREE.MeshBasicMaterial({ color:0xff7a9e, transparent:true, opacity:0.18 });
-const blushL = new THREE.Mesh(new THREE.CircleGeometry(0.14,24), blushMat);
-const blushR = blushL.clone();
-blushL.position.set(-0.48,0.05,0.55); blushL.rotation.y=0.35;
-blushR.position.set(0.48,0.05,0.55); blushR.rotation.y=-0.35;
-orbo.add(blushL, blushR);
-
-const orboBody = new CANNON.Body({
-  mass:1.2,
-  shape:new CANNON.Sphere(0.8),
-  position:new CANNON.Vec3(0,2,0),
-  linearDamping:0.18,
-  angularDamping:0.45,
-  allowSleep:false
-});
-world.addBody(orboBody);
-
-// ===== AI =====
-let aiTarget = new THREE.Vector3(4,0,5);
-let aiState = 'wander';
-let stateTimer = 0;
-const stateEl = document.getElementById('state');
-
-function pickTarget(attempts=0){
-  if(attempts > 10) return; // FIX 1: evita loop infinito
-  const a = Math.random()*Math.PI*2;
-  const r = 7 + Math.random()*16;
-  const x = Math.cos(a)*r;
-  const z = Math.sin(a)*r;
-  if (Math.hypot(x-0, z+19) < 4.5) return pickTarget(attempts+1);
-  aiTarget.set(x,0,z);
-}
-pickTarget();
-
-function setState(s){ aiState=s; stateEl.textContent=s; }
-
-// ===== Interaction =====
-let dragging=false, lastX=0,lastY=0;
-canvas.addEventListener('pointerdown',e=>{ dragging=true; lastX=e.clientX; lastY=e.clientY; pickTarget(); setState('wander'); });
-addEventListener('pointerup',()=>dragging=false);
-addEventListener('pointermove',e=>{
-  if(!dragging) return;
-  const dx = (e.clientX-lastX)/100; const dy=(e.clientY-lastY)/100;
-  lastX=e.clientX; lastY=e.clientY;
-  orboBody.applyImpulse(new CANNON.Vec3(-dx*2.5,0,dy*2.5), orboBody.position);
-});
-
-// ===== Animation helpers =====
-const clock = new THREE.Clock();
-let lastYVel = 0;
-let landT = -1;
-let squash = 1;
-let nextBlink = 2 + Math.random()*3;
-let blinkT = 0;
-let isBlinking = false;
-
-function doBlink(){
-  if(isBlinking) return;
-  isBlinking=true;
-  leftEye.scale.y = 0.1; rightEye.scale.y = 0.1;
-  setTimeout(()=>{ leftEye.scale.y=1; rightEye.scale.y=1; isBlinking=false; }, 120);
+function ai(dt){
+  timer-=dt;const pos=orbo.position,vel=orbo.velocity.length();
+  const to=new CANNON.Vec3(target.x-pos.x,target.y-pos.y,target.z-pos.z);
+  if(to.length()>1){to.normalize();orbo.applyForce(new CANNON.Vec3(to.x*1.4,to.y*1.2,to.z*1.4))}
+  if(pos.y<1.4)orbo.applyForce(new CANNON.Vec3(0,1.8,0));
+  if(timer<=0)pick();
+  if(pos.y<-5||Math.abs(pos.x)>12||Math.abs(pos.z)>12){orbo.position.set(0,14,0);orbo.velocity.set(0,0,0);orbo.angularVelocity.set(0,0,0);loops=0;document.getElementById('loops').textContent='Loop: 0/3';done=false}
+  if(vel>4&&Math.random()<.3)spawnTrail(orboMesh.position);
+  const d=pos.distanceTo(new CANNON.Vec3(0,12,-1.2));
+  if(d<1.1&&pos.y>11.6&&Date.now()-lastLoop>2000&&vel>2.5){loops++;lastLoop=Date.now();document.getElementById('loops').textContent=`Loop: ${loops}/3`;if(loops>=3&&!done){done=true;window.playablesSDK.complete(loops)}}
 }
 
-const camVel = new THREE.Vector3();
+// SIMULA INTERACTION PER META (visto che è autoplay)
+setTimeout(()=>{window.playablesSDK.sendEvent('user_interaction_start');document.getElementById('hint').style.opacity='0'},3000);
 
-function updateCamera(dt, orboPos, vel){
-  const behind = new THREE.Vector3();
-  if(vel.length()>0.2){ behind.copy(vel).normalize().multiplyScalar(-7.5); }
-  else { behind.set(4,0,7); }
-  const desired = new THREE.Vector3().copy(orboPos).add(behind).add(new THREE.Vector3(0,4.6,0));
-  desired.y = Math.max(desired.y, 3.5); // FIX 2: evita camera nel terreno
-
-  const stiffness = 22, damping = 5.2;
-  const to = desired.clone().sub(camera.position);
-  camVel.add(to.multiplyScalar(stiffness*dt));
-  camVel.multiplyScalar(1 - damping*dt);
-  camera.position.add(camVel.clone().multiplyScalar(dt));
-  camera.lookAt(orboPos.x, orboPos.y+0.7, orboPos.z);
-}
-
-// ===== Main loop =====
-function animate(){
-  const dt = Math.min(0.033, clock.getDelta());
-  const t = clock.elapsedTime;
-
-  world.step(1/60, dt, 3);
-
-  const pos = orbo.position;
-  pos.set(orboBody.position.x, orboBody.position.y, orboBody.position.z);
-  const vel3 = new THREE.Vector3(orboBody.velocity.x,0,orboBody.velocity.z);
-  const speed = vel3.length();
-
-  // AI
-  stateTimer -= dt;
-  const toTarget = aiTarget.clone().sub(pos); toTarget.y=0;
-  const dist = toTarget.length();
-
-  if(aiState==='wander'){
-    if(dist>0.6){
-      toTarget.normalize();
-      const force = 6.5;
-      orboBody.applyForce(new CANNON.Vec3(toTarget.x*force,0,toTarget.z*force), orboBody.position);
-    } else {
-      setState('pause'); stateTimer = 1.0 + Math.random()*1.2;
-      orboBody.velocity.x *= 0.5; orboBody.velocity.z *= 0.5;
-    }
-  } else if(aiState==='pause'){
-    if(stateTimer<=0){ setState('look'); stateTimer = 1.1 + Math.random()*0.9; }
-  } else if(aiState==='look'){
-    if(stateTimer<=0){ setState('wander'); pickTarget(); }
-  }
-
-  // zones effects
-  let inAccel=false, inVortex=false;
-  {
-    const d = Math.hypot(pos.x - acc.position.x, pos.z - acc.position.z);
-    if(d<2.4){
-      inAccel=true;
-      const dir = new THREE.Vector3(0,0,0).sub(new THREE.Vector3(acc.position.x,0,acc.position.z)).sub(pos).normalize();
-      orboBody.applyForce(new CANNON.Vec3(dir.x*18, 1.5, dir.z*18), orboBody.position);
-      accRing.material.emissiveIntensity = 1.4 + Math.sin(t*10)*0.2;
-    } else {
-      accRing.material.emissiveIntensity = 0.85 + Math.sin(t*2)*0.1;
-    }
-  }
-  {
-    const dx = vortex.position.x - pos.x;
-    const dz = vortex.position.z - pos.z;
-    const d = Math.hypot(dx,dz);
-    if(d<4.2){
-      inVortex=true;
-      const pull = 14 * (1 - d/4.2);
-      orboBody.applyForce(new CANNON.Vec3(dx* pull*0.6, 0.8, dz* pull*0.6), orboBody.position);
-      orboBody.applyTorque(new CANNON.Vec3(0, pull*0.15, 0));
-    }
-  }
-
-  // landing squash
-  const yVel = orboBody.velocity.y;
-  if(lastYVel < -3.2 && yVel > -0.8 && pos.y < 1.05){
-    landT = 0;
-  }
-  lastYVel = yVel;
-  if(landT >= 0){
-    landT += dt;
-    const A = 0.18, k=9, w=18;
-    squash = 1 - A * Math.exp(-k*landT) * Math.cos(w*landT);
-    if(landT > 0.65){ landT = -1; squash = 1; }
-  }else{
-    squash += (1 - squash) * 0.18;
-  }
-
-  const wobble = 1 + Math.sin(t*8) * 0.03 * Math.min(1, speed*0.45);
-  const scaleY = THREE.MathUtils.clamp(squash * wobble, 0.75, 1.18);
-  const scaleXZ = 1 + (1 - scaleY) * 0.5;
-  orbo.scale.set(scaleXZ, scaleY, scaleXZ);
-
-  if(speed > 0.08){
-    const yaw = Math.atan2(vel3.x, vel3.z);
-    orbo.rotation.y += (yaw - orbo.rotation.y) * Math.min(1, dt*6);
-  }
-  body.rotation.x -= vel3.z * dt * 1.6;
-  body.rotation.z += vel3.x * dt * 1.6;
-
-  blinkT += dt;
-  if(blinkT > nextBlink){ doBlink(); blinkT=0; nextBlink = 2 + Math.random()*3; }
-
-  const lookPoint = (aiState==='look')
-   ? pos.clone().add(new THREE.Vector3(Math.sin(t*1.9)*2.5,0,Math.cos(t*1.4)*2.5))
-    : aiTarget.clone();
-  const lookDir = lookPoint.clone().sub(pos); lookDir.y = THREE.MathUtils.clamp(lookDir.y*0.2, -0.25,0.25); lookDir.normalize();
-  leftPupil.position.set(lookDir.x*0.06, lookDir.y*0.05, 0.125 + lookDir.z*0.02);
-  rightPupil.position.set(lookDir.x*0.06, lookDir.y*0.05, 0.125 + lookDir.z*0.02);
-
-  bodyMat.emissiveIntensity = 0.28 + Math.sin(t*2.4) * 0.12 + (inAccel?0.15:0) + (inVortex?0.1:0);
-
-  vCore.rotation.y -= dt * 1.8;
-  puffs.rotation.y += dt * 0.9;
-  const p = puffs.geometry.attributes.position;
-  for(let i=0;i<puffCnt;i++){
-    const ix=i*3;
-    let x=p.array[ix], y=p.array[ix+1], z=p.array[ix+2];
-    const ang = Math.atan2(z - vortex.position.z, x - vortex.position.x) + dt*(1.2 + i*0.002);
-    const r = Math.max(0.4, Math.hypot(x - vortex.position.x, z - vortex.position.z) * 0.995);
-    p.array[ix] = vortex.position.x + Math.cos(ang)*r;
-    p.array[ix+2] = vortex.position.z + Math.sin(ang)*r;
-    p.array[ix+1] = 0.2 + (Math.sin(t*2 + i)*0.5+0.5)*0.8;
-  }
-  p.needsUpdate = true;
-
-  updateCamera(dt, pos, vel3);
-
-  // keep in bounds soft push
-  const bounds=62;
-  if(Math.abs(pos.x)>bounds || Math.abs(pos.z)>bounds){
-    const bx = -Math.sign(pos.x)*8, bz = -Math.sign(pos.z)*8;
-    orboBody.applyForce(new CANNON.Vec3(bx,0,bz), orboBody.position);
-    if(dist>20) pickTarget();
-  }
-
-  // FIX 3: reset se cade
-  if (orboBody.position.y < -8) {
-    orboBody.position.set(0, 2, 0);
-    orboBody.velocity.set(0,0,0);
-    orboBody.angularVelocity.set(0,0,0);
-    pickTarget();
-    setState('wander');
-  }
-
-  renderer.render(scene, camera);
-  requestAnimationFrame(animate);
-}
+// LOOP
+const clock=new THREE.Clock();
+function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.033);world.step(1/60,dt,3);ai(dt);
+  orboMesh.position.copy(orbo.position);orboMesh.quaternion.copy(orbo.quaternion);
+  trailGroup.children.forEach(c=>{if(c.material.opacity>0){c.material.opacity-=dt*2;c.scale.multiplyScalar(.96)}});
+  const t=performance.now()*.00018;camera.position.set(Math.cos(t)*14,9+Math.sin(t*.5),Math.sin(t)*14);camera.lookAt(orboMesh.position);
+  renderer.render(scene,camera)}
 animate();
-
-// resize
-addEventListener('resize', ()=>{
-  camera.aspect = innerWidth/innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth, innerHeight);
-});
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+setTimeout(()=>orbo.applyImpulse(new CANNON.Vec3(.5,0,.3),orbo.position),800);
 </script>
 </body>
 </html>
