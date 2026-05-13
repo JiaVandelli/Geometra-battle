@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<title>Orbo</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#e8f4ff}
+  canvas{display:block}
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "cannon-es": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"
+  }
+}
+</script>
+</head>
+<body>
+<script type="module">
+import * as THREE from 'three';
+import * as CANNON from 'cannon-es';
+
+// Terreno piatto semplice per test
+// + Carica orbo.png
+// + AI di Orbo
+// + Camera che segue Orbo
+
+const orboTexture = new THREE.TextureLoader().load('orbo.png');
+orboTexture.colorSpace = THREE.SRGBColorSpace;
+
+// ...resto del codice Orbo che hai già
+</script>
+</body>
+</html>
