@@ -3,170 +3,122 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<title>Orbo Battle</title>
+<title>Blackhole Arena</title>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}html,body{width:100%;height:100%;overflow:hidden;background:#1a0a2e;font-family:sans-serif}
-canvas{display:block}
-#ui{position:fixed;top:12px;left:12px;color:#fff;font-weight:700;text-shadow:0 0 10px #000;z-index:10}
-#ui div{margin-bottom:6px;background:rgba(0,0,0,.5);padding:6px 10px;border-radius:6px;font-size:14px}
+*{margin:0;padding:0;box-sizing:border-box}html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:system-ui,sans-serif}canvas{display:block}
+#ui{position:fixed;top:14px;left:14px;color:#fff;font-weight:800;text-shadow:0 0 12px #000;z-index:10}
+#ui div{margin-bottom:6px;background:rgba(0,0,0,.6);padding:7px 12px;border-radius:8px;font-size:15px;backdrop-filter:blur(4px)}
 </style>
 </head>
 <body>
-<div id="ui"><div>Orbo Battle ⚔️</div><div id="alive">Vivi: 4/4</div><div id="powers"></div></div>
+<div id="ui"><div>BLACKHOLE ARENA ⚫</div><div id="alive">Vivi: 4/4</div><div id="powers"></div></div>
 <script type="module">
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 
-const scene=new THREE.Scene();scene.background=new THREE.Color(0x1a0a2e);
-const camera=new THREE.PerspectiveCamera(60,innerWidth/innerHeight,.1,100);camera.position.set(0,18,0);camera.lookAt(0,0,0);
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x050010);scene.fog=new THREE.FogExp2(0x110022,0.025);
+const camera=new THREE.PerspectiveCamera(65,innerWidth/innerHeight,.1,100);camera.position.set(0,10,10);
 const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setSize(innerWidth,innerHeight);document.body.appendChild(renderer.domElement);
-scene.add(new THREE.HemisphereLight(0x9999ff,0x222244,1));const dl=new THREE.DirectionalLight(0xffffff,.8);dl.position.set(5,10,5);scene.add(dl);
+scene.add(new THREE.HemisphereLight(0x8844ff,0x220044,1.2));const dl=new THREE.DirectionalLight(0xffffff,1);dl.position.set(5,12,5);scene.add(dl);
 
-const world=new CANNON.World({gravity:new CANNON.Vec3(0,-20,0)});const mat=new CANNON.Material();world.defaultContactMaterial=new CANNON.ContactMaterial(mat,mat,{friction:.1,restitution:.7});
+const world=new CANNON.World({gravity:new CANNON.Vec3(0,-25,0)});
+const mat=new CANNON.Material();
+world.defaultContactMaterial=new CANNON.ContactMaterial(mat,mat,{friction:0.05,restitution:1.1});
 
-const planeGeo=new THREE.PlaneGeometry(20,20); // fix: era PloneGeometry
-const planeMat=new THREE.MeshStandardMaterial({color:0x553377,roughness:.8});const plane=new THREE.Mesh(planeGeo,planeMat);plane.rotation.x=-Math.PI/2;scene.add(plane);
+// ARENA 12x12
+const arenaSize=12;
+const planeGeo=new THREE.PlaneGeometry(arenaSize,arenaSize,20,20);
+const planeMat=new THREE.MeshStandardMaterial({color:0x1a0033,emissive:0x6600aa,emissiveIntensity:0.25,metalness:0.6,roughness:0.2,wireframe:false});
+const plane=new THREE.Mesh(planeGeo,planeMat);plane.rotation.x=-Math.PI/2;scene.add(plane);
 const planeBody=new CANNON.Body({mass:0,shape:new CANNON.Plane(),material:mat});planeBody.quaternion.setFromEuler(-Math.PI/2,0,0);world.addBody(planeBody);
 
-// BUCHE
-const holes=[]; [[-8,8], [8,8], [8,-8], [-8,-8]].forEach(([x,z])=>{const m=new THREE.Mesh(new THREE.CylinderGeometry(1.5,1.5,.5,24),new THREE.MeshBasicMaterial({color:0x000}));m.position.set(x,-.26,z);scene.add(m);holes.push({x,z,r:1.5});});
+// BORDO NEON
+const edge=new THREE.Mesh(new THREE.RingGeometry(arenaSize/2-0.1,arenaSize/2+0.15,64),new THREE.MeshBasicMaterial({color:0xaa00ff,side:2,transparent:true,opacity:0.8}));
+edge.rotation.x=-Math.PI/2;edge.position.y=0.02;scene.add(edge);
 
-// SFERE + POTERI
-const colors=[0xff5555,0x5555ff,0x55ff55,0xaa55ff];
-const powerNames=['TELETRASPORTO','STORDIMENTO','GIGANTE','CLONE'];
-const spawns=[[-7,7],[7,7],[7,-7],[-7,-7]];
+// BUCHE VIVE a ±5
+const holes=[]; [[-5,5],[5,5],[5,-5],[-5,-5]].forEach(([x,z])=>{
+  const g=new THREE.Group();g.position.set(x,0,z);
+  const core=new THREE.Mesh(new THREE.CylinderGeometry(1.2,1.2,0.3,32),new THREE.MeshBasicMaterial({color:0x000000}));
+  const ring=new THREE.Mesh(new THREE.RingGeometry(1.2,1.6,32),new THREE.MeshBasicMaterial({color:0xaa00ff,side:2,transparent:true,opacity:0.7}));
+  ring.rotation.x=-Math.PI/2;ring.position.y=0.01;g.add(core,ring);scene.add(g);holes.push({x,z,r:1.3,mesh:ring});
+});
+
+// SFERE
+const colors=[0xff3355,0x3388ff,0x33ff77,0xbb44ff];
+const powerNames=['DASH','STORDIMENTO','GIGANTE','CLONE'];
+const spawns=[[-4,4],[4,4],[4,-4],[-4,-4]];
 const orbs=[];
 
 spawns.forEach(([x,z],i)=>{
-  const R=.5;
-  const mesh=new THREE.Mesh(new THREE.SphereGeometry(R,24,24),new THREE.MeshStandardMaterial({color:colors[i],emissive:colors[i],emissiveIntensity:.3}));
+  const R=0.5;
+  const mesh=new THREE.Mesh(new THREE.SphereGeometry(R,28,28),new THREE.MeshStandardMaterial({color:colors[i],emissive:colors[i],emissiveIntensity:0.6,metalness:0.3,roughness:0.2}));
   mesh.position.set(x,1,z);scene.add(mesh);
-  const body=new CANNON.Body({mass:1,shape:new CANNON.Sphere(R),material:mat,linearDamping:.15});
+  const body=new CANNON.Body({mass:2.5,shape:new CANNON.Sphere(R),material:mat,linearDamping:0.1});
   body.position.set(x,1,z);world.addBody(body);
-  orbs.push({
-    mesh,body,R,baseR:R,id:i,alive:true,
-    power:i, // potere iniziale
-    powerCd:0,stunned:0,isGiant:false,clone:null,cloneTime:0
-  });
+
+  // TRAIL
+  const trailGeo=new THREE.BufferGeometry();const trailPos=new Float32Array(60*3);trailGeo.setAttribute('position',new THREE.BufferAttribute(trailPos,3));
+  const trail=new THREE.Line(trailGeo,new THREE.LineBasicMaterial({color:colors[i],transparent:true,opacity:0.6}));
+  scene.add(trail);
+
+  orbs.push({mesh,body,R,baseR:R,id:i,alive:true,power:i,powerCd:0,stunned:0,isGiant:false,clone:null,cloneTime:0,dashCd:1+Math.random(),trail,trailPos,trailIdx:0});
 });
 
-const aliveUI=document.getElementById('alive');
-const powersUI=document.getElementById('powers');
+const aliveUI=document.getElementById('alive');const powersUI=document.getElementById('powers');
 
-// AI INTELLIGENTE
 function botAI(o,dt){
-  if(!o.alive||o.stunned>0)return;
+  if(!o.alive||o.stunned>0){o.body.velocity.scale(0.9,o.body.velocity);return;}
+  const enemies=orbs.filter(p=>p.alive&&p!==o);if(!enemies.length)return;
 
-  const enemies=orbs.filter(p=>p.alive&&p!==o);
-  if(enemies.length===0)return;
+  // scappa buche
+  for(let h of holes){const d=Math.hypot(o.body.position.x-h.x,o.body.position.z-h.z);if(d<h.r+1.5){const e=new CANNON.Vec3(o.body.position.x-h.x,0,o.body.position.z-h.z);e.normalize();o.body.velocity.x=e.x*12;o.body.velocity.z=e.z*12;return;}}
 
-  // 1. SOPRAVVIVENZA: scappa dalle buche
-  for(let h of holes){
-    const dHole=Math.hypot(o.body.position.x-h.x,o.body.position.z-h.z);
-    if(dHole<h.r+2){
-      const escape=new CANNON.Vec3(o.body.position.x-h.x,0,o.body.position.z-h.z);
-      escape.normalize();
-      o.body.velocity.x=escape.x*8;
-      o.body.velocity.z=escape.z*8;
-      return;
-    }
+  const target=enemies.sort((a,b)=>o.body.position.distanceTo(a.body.position)-o.body.position.distanceTo(b.body.position))[0];
+  const dir=new CANNON.Vec3(target.body.position.x-o.body.position.x,0,target.body.position.z-o.body.position.z);const d=Math.hypot(dir.x,dir.z);if(d>0.01)dir.normalize();
+
+  // DASH
+  o.dashCd-=dt;
+  if(o.dashCd<=0 && d<6){
+    const force=o.isGiant?22:18;
+    o.body.velocity.x=dir.x*force;o.body.velocity.z=dir.z*force;
+    o.body.velocity.y=2;
+    o.dashCd=2.5+Math.random();
+    o.mesh.material.emissiveIntensity=1.2;setTimeout(()=>o.mesh.material.emissiveIntensity=0.6,150);
+  }else if(o.dashCd>1){
+    const speed=o.isGiant?4:6;o.body.velocity.x=dir.x*speed;o.body.velocity.z=dir.z*speed;
   }
 
-  // 2. SCEGLI TARGET: quello più vicino e con potere "debole" ora
-  let target=enemies.sort((a,b)=>o.body.position.distanceTo(a.body.position)-o.body.position.distanceTo(b.body.position))[0];
-
-  // 3. MUOVITI
-  const dir=new CANNON.Vec3(target.body.position.x-o.body.position.x,0,target.body.position.z-o.body.position.z);
-  const d=Math.hypot(dir.x,dir.z);
-  if(d>1.5){
-    dir.normalize();
-    const speed=o.isGiant?6:8;
-    o.body.velocity.x=dir.x*speed;
-    o.body.velocity.z=dir.z*speed;
-  }
-
-  // 4. USA POTERE INTELLIGENTEMENTE
+  // POTERI
   if(o.powerCd<=0){
-    if(o.power===0 && d>5){ // Teletrasporto: scappa o flanka
-      o.body.position.x+=dir.x*4;
-      o.body.position.z+=dir.z*4;
-      o.powerCd=5;
-      o.mesh.material.emissiveIntensity=1;
-      setTimeout(()=>o.mesh.material.emissiveIntensity=.3,200);
-    }
-
-    if(o.power===1 && d<6){ // Stordimento: usa se nemico vicino
-      enemies.forEach(p=>{
-        if(p.alive&&o.body.position.distanceTo(p.body.position)<6)p.stunned=0.8;
-      });
-      o.powerCd=6;
-    }
-
-    if(o.power===2 && d<3){ // Gigante: usa in mischia
-      o.isGiant=true;o.mesh.scale.setScalar(2);o.body.shapes[0].radius=o.R*2;o.body.updateBoundingRadius();
-      o.powerCd=8;
-      setTimeout(()=>{o.isGiant=false;o.mesh.scale.setScalar(1);o.body.shapes[0].radius=o.R;o.body.updateBoundingRadius();},3000);
-    }
-
-    if(o.power===3 && Math.random()<0.02){ // Clone: spam ogni tanto
-      const c=o.mesh.clone();c.material=c.material.clone();c.material.opacity=.5;c.material.transparent=true;scene.add(c);
-      o.clone=c;o.cloneTime=4;o.powerCd=7;
-    }
+    if(o.power===1&&d<5){enemies.forEach(p=>{if(o.body.position.distanceTo(p.body.position)<5)p.stunned=0.9;});o.powerCd=6;}
+    if(o.power===2&&d<2.5){o.isGiant=true;o.mesh.scale.setScalar(1.8);o.body.shapes[0].radius=o.R*1.8;o.body.updateBoundingRadius();o.powerCd=8;setTimeout(()=>{o.isGiant=false;o.mesh.scale.setScalar(1);o.body.shapes[0].radius=o.R;o.body.updateBoundingRadius();},3000);}
+    if(o.power===3&&Math.random()<0.03){const c=o.mesh.clone();c.material=c.material.clone();c.material.opacity=0.4;c.material.transparent=true;scene.add(c);o.clone=c;o.cloneTime=3.5;o.powerCd=7;}
   }
-
-  // 5. GESTISCI CLONE
-  if(o.clone){
-    o.cloneTime-=dt;
-    o.clone.position.copy(o.mesh.position).add(new THREE.Vector3(Math.sin(performance.now()*.005)*1.5,0,Math.cos(performance.now()*.005)*1.5));
-    if(o.cloneTime<=0){scene.remove(o.clone);o.clone=null;}
-
-    // Clone scompare se toccato
-    enemies.forEach(p=>{
-      if(p.alive&&o.clone&&o.clone.position.distanceTo(p.body.position)<p.R+0.5){
-        scene.remove(o.clone);o.clone=null;
-      }
-    });
-  }
+  if(o.clone){o.cloneTime-=dt;o.clone.position.copy(o.mesh.position).add(new THREE.Vector3(Math.sin(performance.now()*0.004+i)*1.2,0,Math.cos(performance.now()*0.004+i)*1.2));if(o.cloneTime<=0){scene.remove(o.clone);o.clone=null;}}
 }
 
-function checkHoles(){
-  orbs.forEach(o=>{
-    if(!o.alive)return;
-    holes.forEach(h=>{
-      const dx=o.body.position.x-h.x,dz=o.body.position.z-h.z;
-      if(Math.hypot(dx,dz)<h.r&&o.body.position.y<0.5){
-        // RUBA POTERE: dai il potere di o a chi l'ha spinta
-        const killer=orbs.find(k=>k.alive&&k!==o&&k.body.position.distanceTo(o.body.position)<2);
-        if(killer)killer.power=o.power;
-
-        o.alive=false;o.mesh.visible=false;world.removeBody(o.body);
-      }
-    });
-  });
+function updateTrail(o){
+  o.trailPos[o.trailIdx*3]=o.mesh.position.x;o.trailPos[o.trailIdx*3+1]=o.mesh.position.y+0.05;o.trailPos[o.trailIdx*3+2]=o.mesh.position.z;
+  o.trailIdx=(o.trailIdx+1)%20;o.trail.geometry.attributes.position.needsUpdate=true;
 }
+
+function checkHoles(){orbs.forEach(o=>{if(!o.alive)return;holes.forEach(h=>{const dx=o.body.position.x-h.x,dz=o.body.position.z-h.z;if(Math.hypot(dx,dz)<h.r&&o.body.position.y<0.4){const killer=orbs.find(k=>k.alive&&k!==o&&k.body.position.distanceTo(o.body.position)<2.2);if(killer)killer.power=o.power;o.alive=false;o.mesh.visible=false;o.trail.visible=false;world.removeBody(o.body);}});});}
 
 const clock=new THREE.Clock();
-function tick(){
-  requestAnimationFrame(tick);
-  const dt=Math.min(clock.getDelta(),.033);
-  world.step(1/60,dt,3);
-
-  orbs.forEach(o=>{
-    if(o.alive){
-      o.mesh.position.copy(o.body.position);
-      o.powerCd=Math.max(0,o.powerCd-dt);
-      o.stunned=Math.max(0,o.stunned-dt);
-      if(o.stunned>0)o.body.velocity.scale(.1,o.body.velocity);
-      botAI(o,dt);
-    }
-  });
-
+function tick(){requestAnimationFrame(tick);const dt=Math.min(clock.getDelta(),0.033);const t=clock.elapsedTime;world.step(1/60,dt,3);
+  holes.forEach(h=>h.mesh.rotation.z+=dt*2);
+  orbs.forEach(o=>{if(o.alive){o.mesh.position.copy(o.body.position);o.powerCd=Math.max(0,o.powerCd-dt);o.stunned=Math.max(0,o.stunned-dt);updateTrail(o);botAI(o,dt);}});
   checkHoles();
 
-  aliveUI.textContent=`Vivi: ${orbs.filter(o=>o.alive).length}/4`;
-  powersUI.innerHTML=orbs.filter(o=>o.alive).map(o=>`${powerNames[o.power]} ${o.id+1}`).join('<br>');
+  // CAMERA CINEMATICA
+  const alive=orbs.filter(o=>o.alive);if(alive.length>1){const cx=alive.reduce((s,o)=>s+o.mesh.position.x,0)/alive.length;const cz=alive.reduce((s,o)=>s+o.mesh.position.z,0)/alive.length;camera.position.x=Math.sin(t*0.15)*9+cx*0.2;camera.position.z=Math.cos(t*0.15)*9+cz*0.2;camera.position.y=9+Math.sin(t*0.3)*1;camera.lookAt(cx,0,cz);}else{camera.lookAt(0,0,0);}
 
+  // RAGE MODE ultimi 2
+  if(alive.length===2){scene.background.setHex(0x220011);planeMat.emissiveIntensity=0.5;}else{scene.background.setHex(0x050010);planeMat.emissiveIntensity=0.25;}
+
+  aliveUI.textContent=`Vivi: ${alive.length}/4`;powersUI.innerHTML=alive.map(o=>`#${o.id+1} ${powerNames[o.power]}${o.isGiant?' 💥':''}`).join('<br>');
   renderer.render(scene,camera);
 }
 tick();
