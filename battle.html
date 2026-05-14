@@ -33,7 +33,7 @@ scene.background = new THREE.Color(0x050010);
 scene.fog = new THREE.FogExp2(0x110022, 0.025);
 
 const camera = new THREE.PerspectiveCamera(65, innerWidth/innerHeight, 0.1, 100);
-camera.position.set(0, 10, 10);
+camera.position.set(8, 10, 12);
 
 const renderer = new THREE.WebGLRenderer({antialias:true});
 renderer.setSize(innerWidth, innerHeight);
@@ -50,34 +50,27 @@ const world = new CANNON.World({gravity:new CANNON.Vec3(0,-25,0)});
 const mat = new CANNON.Material();
 world.defaultContactMaterial = new CANNON.ContactMaterial(mat, mat, {friction:0.05, restitution:0.85});
 
-// PAVIMENTO
-const half = 6;
+// CAMPO RETTANGOLARE 14x9
+const halfX = 7, halfZ = 4.5;
 world.addBody(new CANNON.Body({mass:0, shape:new CANNON.Plane(), material:mat, quaternion:new CANNON.Quaternion().setFromEuler(-Math.PI/2,0,0)}));
-const plane = new THREE.Mesh(new THREE.PlaneGeometry(12,12), new THREE.MeshStandardMaterial({color:0x1a0033, emissive:0x6600aa, emissiveIntensity:0.25, metalness:0.6, roughness:0.2}));
+const plane = new THREE.Mesh(new THREE.PlaneGeometry(halfX*2, halfZ*2), new THREE.MeshStandardMaterial({color:0x1a0033, emissive:0x6600aa, emissiveIntensity:0.25, metalness:0.6, roughness:0.2}));
 plane.rotation.x = -Math.PI/2;
 scene.add(plane);
 
 // MURI ALTI 5m
-[[0,6,6,0.3],[0,-6,6,0.3],[6,0,0.3,6],[-6,0,0.3,6]].forEach(([x,z,w,h])=>{
+[[0,halfZ,halfX,0.3],[0,-halfZ,halfX,0.3],[halfX,0,0.3,halfZ],[-halfX,0,0.3,halfZ]].forEach(([x,z,w,h])=>{
   const b = new CANNON.Body({mass:0, shape:new CANNON.Box(new CANNON.Vec3(w,h,2.5)), material:mat});
   b.position.set(x, 2.5, z);
   world.addBody(b);
-});
-
-// BUCHE
-const holes = [];
-[[-5,5],[5,5],[5,-5],[-5,-5]].forEach(([x,z])=>{
-  const ring = new THREE.Mesh(new THREE.RingGeometry(1.2,1.6,32), new THREE.MeshBasicMaterial({color:0xaa00ff, transparent:true, opacity:0.7, side:2}));
-  ring.position.set(x,0.01,z);
-  ring.rotation.x = -Math.PI/2;
-  scene.add(ring);
-  holes.push({x, z, r:1.3, mesh:ring});
+  const wall = new THREE.Mesh(new THREE.BoxGeometry(w*2,5,0.6), new THREE.MeshStandardMaterial({color:0x330066, transparent:true, opacity:0.3}));
+  wall.position.set(x,2.5,z);
+  scene.add(wall);
 });
 
 const colors = [0xff3355, 0x3388ff, 0x33ff77, 0xbb44ff];
 const names = ['ROSSA','BLU','VERDE','VIOLA'];
 const powers = ['DASH','STORD','GIGANTE','CLONE'];
-const spawns = [[-4,4],[4,4],[4,-4],[-4,-4]];
+const spawns = [[-5,3],[5,3],[5,-3],[-5,-3]];
 
 const orbs = [], kills = [0,0,0,0], streak = [0,0,0,0];
 let timer = 0, slowMo = 1;
@@ -89,7 +82,7 @@ function make(i,x,z){
   const body = new CANNON.Body({mass:2.5, shape:new CANNON.Sphere(0.5), material:mat, linearDamping:0.1});
   body.position.set(x,1,z);
   world.addBody(body);
-  const trail = new THREE.Line(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(new Float32Array(60*3),3)), new THREE.LineBasicMaterial({color:colors[i], transparent:true, opacity:0.6}));
+  const trail = new THREE.Line(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(new Float32Array(60),3)), new THREE.LineBasicMaterial({color:colors[i], transparent:true, opacity:0.6}));
   scene.add(trail);
   return {mesh, body, id:i, alive:true, power:i, cd:0, stun:0, giant:false, dash:1+Math.random(), trail, ti:0, ai:Math.random()*0.3};
 }
@@ -111,17 +104,6 @@ function ai(o,dt){
   const enemies = orbs.filter(p=>p.alive && p!==o);
   if(!enemies.length) return;
 
-  // scappa buche
-  for(const h of holes){
-    if(Math.hypot(o.body.position.x-h.x, o.body.position.z-h.z) < 2.5){
-      const dir = new CANNON.Vec3(o.body.position.x-h.x, 0, o.body.position.z-h.z);
-      dir.normalize();
-      o.body.velocity.x = dir.x*12;
-      o.body.velocity.z = dir.z*12;
-      return;
-    }
-  }
-
   let target = enemies.sort((a,b)=>o.body.position.distanceTo(a.body.position)-o.body.position.distanceTo(b.body.position))[0];
   if(Math.random()<0.2) target = enemies[1] || target;
 
@@ -131,13 +113,13 @@ function ai(o,dt){
 
   o.dash -= dt;
   if(o.dash<=0 && dist<6){
-    o.body.velocity.x = dir.x * (o.giant?20:16);
-    o.body.velocity.z = dir.z * (o.giant?20:16);
+    o.body.velocity.x = dir.x * 16;
+    o.body.velocity.z = dir.z * 16;
     o.body.velocity.y = 0.5;
     o.dash = 2.5 + Math.random();
   } else if(o.dash>1){
-    o.body.velocity.x = dir.x * (o.giant?4:6);
-    o.body.velocity.z = dir.z * (o.giant?4:6);
+    o.body.velocity.x = dir.x * 6;
+    o.body.velocity.z = dir.z * 6;
   }
 
   o.cd = Math.max(0, o.cd-dt);
@@ -155,8 +137,6 @@ function loop(){
   const dt = Math.min(0.033, clock.getDelta()) * slowMo;
   world.step(1/60, dt, 3);
 
-  holes.forEach(h=>h.mesh.rotation.z += dt*2);
-
   orbs.forEach(o=>{
     if(o.alive){
       o.mesh.position.copy(o.body.position);
@@ -169,21 +149,17 @@ function loop(){
     }
   });
 
-  // MORTE
+  // MORTE SOLO FUORI CAMPO
   orbs.forEach(o=>{
     if(!o.alive) return;
-    const out = Math.abs(o.body.position.x)>6.5 || Math.abs(o.body.position.z)>6.5 || o.body.position.y<-2;
-    for(const h of holes){
-      const d = Math.hypot(o.body.position.x-h.x, o.body.position.z-h.z);
-      if((d<h.r && o.body.position.y<0.4) || out){
-        const killer = orbs.find(k=>k.alive && k!==o && k.body.position.distanceTo(o.body.position)<2.2);
-        if(killer){ killer.power = o.power; kills[killer.id]++; }
-        o.alive = false;
-        o.mesh.visible = false;
-        o.trail.visible = false;
-        world.removeBody(o.body);
-        break;
-      }
+    const out = Math.abs(o.body.position.x)>halfX+0.5 || Math.abs(o.body.position.z)>halfZ+0.5 || o.body.position.y<-2;
+    if(out){
+      const killer = orbs.find(k=>k.alive && k!==o && k.body.position.distanceTo(o.body.position)<2.5);
+      if(killer){ kills[killer.id]++; }
+      o.alive = false;
+      o.mesh.visible = false;
+      o.trail.visible = false;
+      world.removeBody(o.body);
     }
   });
 
@@ -193,37 +169,27 @@ function loop(){
   if(alive.length===1){
     if(timer===0){
       const w = alive[0];
-      streak[w.id]++;
-      streak.forEach((v,i)=>{ if(i!==w.id) streak[i]=0; });
-      showWin(w.id);
-      slowMo = 0.3;
+      streak[w.id]++; streak.forEach((v,i)=>{ if(i!==w.id) streak[i]=0; });
+      showWin(w.id); slowMo = 0.3;
     }
     timer += dt;
     if(timer>3){
       orbs.forEach(o=>{ world.removeBody(o.body); scene.remove(o.mesh); scene.remove(o.trail); });
       orbs.length = 0;
       spawns.forEach(([x,z],i)=>orbs.push(make(i,x,z)));
-      timer = 0;
-      slowMo = 1;
+      timer = 0; slowMo = 1;
     }
   } else if(alive.length===0){
     timer += dt;
     if(timer>1){
-      orbs.forEach(o=>{ scene.remove(o.mesh); scene.remove(o.trail); });
       orbs.length = 0;
       spawns.forEach(([x,z],i)=>orbs.push(make(i,x,z)));
       timer = 0;
     }
-  } else {
-    timer = 0;
-    slowMo = 1;
-  }
+  } else { timer = 0; slowMo = 1; }
 
-  // CAMERA FISSA DIAGONALE
-camera.position.set(8, 10, 12);
-camera.lookAt(0, 0, 0);
+  camera.lookAt(0,0,0);
 
-  // UI
   ui.a.textContent = `Vivi: ${alive.length}/4`;
   ui.k.textContent = `Kill: ${kills.join('-')}`;
   ui.s.textContent = `Streak: ${streak.join('-')}`;
