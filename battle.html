@@ -29,7 +29,7 @@ world.defaultContactMaterial=new CANNON.ContactMaterial(mat,mat,{friction:0.05,r
 // ARENA 12x12
 const arenaSize=12;
 const planeGeo=new THREE.PlaneGeometry(arenaSize,arenaSize,20,20);
-const planeMat=new THREE.MeshStandardMaterial({color:0x1a0033,emissive:0x6600aa,emissiveIntensity:0.25,metalness:0.6,roughness:0.2,wireframe:false});
+const planeMat=new THREE.MeshStandardMaterial({color:0x1a0033,emissive:0x6600aa,emissiveIntensity:0.25,metalness:0.6,roughness:0.2});
 const plane=new THREE.Mesh(planeGeo,planeMat);plane.rotation.x=-Math.PI/2;scene.add(plane);
 const planeBody=new CANNON.Body({mass:0,shape:new CANNON.Plane(),material:mat});planeBody.quaternion.setFromEuler(-Math.PI/2,0,0);world.addBody(planeBody);
 
@@ -40,7 +40,7 @@ edge.rotation.x=-Math.PI/2;edge.position.y=0.02;scene.add(edge);
 // BUCHE VIVE a ±5
 const holes=[]; [[-5,5],[5,5],[5,-5],[-5,-5]].forEach(([x,z])=>{
   const g=new THREE.Group();g.position.set(x,0,z);
-  const core=new THREE.Mesh(new THREE.CylinderGeometry(1.2,1.2,0.3,32),new THREE.MeshBasicMaterial({color:0x000000}));
+  const core=new THREE.Mesh(new THREE.CylinderGeometry(1.2,1.2,0.3,32),new THREE.MeshBasicMaterial({color:0x000}));
   const ring=new THREE.Mesh(new THREE.RingGeometry(1.2,1.6,32),new THREE.MeshBasicMaterial({color:0xaa00ff,side:2,transparent:true,opacity:0.7}));
   ring.rotation.x=-Math.PI/2;ring.position.y=0.01;g.add(core,ring);scene.add(g);holes.push({x,z,r:1.3,mesh:ring});
 });
@@ -63,19 +63,28 @@ spawns.forEach(([x,z],i)=>{
   const trail=new THREE.Line(trailGeo,new THREE.LineBasicMaterial({color:colors[i],transparent:true,opacity:0.6}));
   scene.add(trail);
 
-  orbs.push({mesh,body,R,baseR:R,id:i,alive:true,power:i,powerCd:0,stunned:0,isGiant:false,clone:null,cloneTime:0,dashCd:1+Math.random(),trail,trailPos,trailIdx:0});
+  orbs.push({mesh,body,R,baseR:R,id:i,alive:true,power:i,powerCd:0,stunned:0,isGiant:false,clone:null,cloneTime:0,dashCd:1+Math.random(),trail,trailPos,trailIdx:0,aiDelay:Math.random()*0.3});
 });
 
 const aliveUI=document.getElementById('alive');const powersUI=document.getElementById('powers');
 
 function botAI(o,dt){
   if(!o.alive||o.stunned>0){o.body.velocity.scale(0.9,o.body.velocity);return;}
+
+  // Ritardo AI random per sembrare umano
+  o.aiDelay-=dt;
+  if(o.aiDelay>0)return;
+  o.aiDelay=Math.random()*0.2;
+
   const enemies=orbs.filter(p=>p.alive&&p!==o);if(!enemies.length)return;
 
   // scappa buche
   for(let h of holes){const d=Math.hypot(o.body.position.x-h.x,o.body.position.z-h.z);if(d<h.r+1.5){const e=new CANNON.Vec3(o.body.position.x-h.x,0,o.body.position.z-h.z);e.normalize();o.body.velocity.x=e.x*12;o.body.velocity.z=e.z*12;return;}}
 
-  const target=enemies.sort((a,b)=>o.body.position.distanceTo(a.body.position)-o.body.position.distanceTo(b.body.position))[0];
+  let target=enemies.sort((a,b)=>o.body.position.distanceTo(a.body.position)-o.body.position.distanceTo(b.body.position))[0];
+  // 20% chance di cambiare target per più caos
+  if(Math.random()<0.2 && enemies.length>1) target=enemies[1];
+
   const dir=new CANNON.Vec3(target.body.position.x-o.body.position.x,0,target.body.position.z-o.body.position.z);const d=Math.hypot(dir.x,dir.z);if(d>0.01)dir.normalize();
 
   // DASH
@@ -96,29 +105,89 @@ function botAI(o,dt){
     if(o.power===2&&d<2.5){o.isGiant=true;o.mesh.scale.setScalar(1.8);o.body.shapes[0].radius=o.R*1.8;o.body.updateBoundingRadius();o.powerCd=8;setTimeout(()=>{o.isGiant=false;o.mesh.scale.setScalar(1);o.body.shapes[0].radius=o.R;o.body.updateBoundingRadius();},3000);}
     if(o.power===3&&Math.random()<0.03){const c=o.mesh.clone();c.material=c.material.clone();c.material.opacity=0.4;c.material.transparent=true;scene.add(c);o.clone=c;o.cloneTime=3.5;o.powerCd=7;}
   }
-  if(o.clone){o.cloneTime-=dt;o.clone.position.copy(o.mesh.position).add(new THREE.Vector3(Math.sin(performance.now()*0.004+i)*1.2,0,Math.cos(performance.now()*0.004+i)*1.2));if(o.cloneTime<=0){scene.remove(o.clone);o.clone=null;}}
+
+  // FIX BUG: usa o.id invece di i
+  if(o.clone){
+    o.cloneTime-=dt;
+    o.clone.position.copy(o.mesh.position).add(new THREE.Vector3(Math.sin(performance.now()*0.004+o.id)*1.2,0,Math.cos(performance.now()*0.004+o.id)*1.2));
+    if(o.cloneTime<=0){scene.remove(o.clone);o.clone=null;}
+
+    // Clone scompare se toccato
+    enemies.forEach(p=>{
+      if(p.alive&&o.clone&&o.clone.position.distanceTo(p.body.position)<p.R+0.5){
+        scene.remove(o.clone);o.clone=null;
+      }
+    });
+  }
 }
 
 function updateTrail(o){
-  o.trailPos[o.trailIdx*3]=o.mesh.position.x;o.trailPos[o.trailIdx*3+1]=o.mesh.position.y+0.05;o.trailPos[o.trailIdx*3+2]=o.mesh.position.z;
-  o.trailIdx=(o.trailIdx+1)%20;o.trail.geometry.attributes.position.needsUpdate=true;
+  if(!o.alive){
+    // Reset trail quando muore
+    for(let i=0;i<o.trailPos.length;i++)o.trailPos[i]=1000;
+    o.trail.geometry.attributes.position.needsUpdate=true;
+    return;
+  }
+  o.trailPos[o.trailIdx*3]=o.mesh.position.x;
+  o.trailPos[o.trailIdx*3+1]=o.mesh.position.y+0.05;
+  o.trailPos[o.trailIdx*3+2]=o.mesh.position.z;
+  o.trailIdx=(o.trailIdx+1)%20;
+  o.trail.geometry.attributes.position.needsUpdate=true;
 }
 
-function checkHoles(){orbs.forEach(o=>{if(!o.alive)return;holes.forEach(h=>{const dx=o.body.position.x-h.x,dz=o.body.position.z-h.z;if(Math.hypot(dx,dz)<h.r&&o.body.position.y<0.4){const killer=orbs.find(k=>k.alive&&k!==o&&k.body.position.distanceTo(o.body.position)<2.2);if(killer)killer.power=o.power;o.alive=false;o.mesh.visible=false;o.trail.visible=false;world.removeBody(o.body);}});});}
+function checkHoles(){
+  orbs.forEach(o=>{
+    if(!o.alive)return;
+    holes.forEach(h=>{
+      const dx=o.body.position.x-h.x,dz=o.body.position.z-h.z;
+      if(Math.hypot(dx,dz)<h.r&&o.body.position.y<0.4){
+        const killer=orbs.find(k=>k.alive&&k!==o&&k.body.position.distanceTo(o.body.position)<2.2);
+        if(killer)killer.power=o.power;
+        o.alive=false;o.mesh.visible=false;o.trail.visible=false;world.removeBody(o.body);
+      }
+    });
+  });
+}
 
 const clock=new THREE.Clock();
-function tick(){requestAnimationFrame(tick);const dt=Math.min(clock.getDelta(),0.033);const t=clock.elapsedTime;world.step(1/60,dt,3);
+function tick(){
+  requestAnimationFrame(tick);
+  const dt=Math.min(clock.getDelta(),0.033);
+  const t=clock.elapsedTime;
+  world.step(1/60,dt,3);
+
   holes.forEach(h=>h.mesh.rotation.z+=dt*2);
-  orbs.forEach(o=>{if(o.alive){o.mesh.position.copy(o.body.position);o.powerCd=Math.max(0,o.powerCd-dt);o.stunned=Math.max(0,o.stunned-dt);updateTrail(o);botAI(o,dt);}});
+  orbs.forEach(o=>{if(o.alive||o.trail.visible){o.mesh.position.copy(o.body.position);o.powerCd=Math.max(0,o.powerCd-dt);o.stunned=Math.max(0,o.stunned-dt);updateTrail(o);if(o.alive)botAI(o,dt);}});
   checkHoles();
 
   // CAMERA CINEMATICA
-  const alive=orbs.filter(o=>o.alive);if(alive.length>1){const cx=alive.reduce((s,o)=>s+o.mesh.position.x,0)/alive.length;const cz=alive.reduce((s,o)=>s+o.mesh.position.z,0)/alive.length;camera.position.x=Math.sin(t*0.15)*9+cx*0.2;camera.position.z=Math.cos(t*0.15)*9+cz*0.2;camera.position.y=9+Math.sin(t*0.3)*1;camera.lookAt(cx,0,cz);}else{camera.lookAt(0,0,0);}
+  const alive=orbs.filter(o=>o.alive);
+  if(alive.length>1){
+    const cx=alive.reduce((s,o)=>s+o.mesh.position.x,0)/alive.length;
+    const cz=alive.reduce((s,o)=>s+o.mesh.position.z,0)/alive.length;
+    camera.position.x=Math.sin(t*0.15)*9+cx*0.2;
+    camera.position.z=Math.cos(t*0.15)*9+cz*0.2;
+    camera.position.y=9+Math.sin(t*0.3)*1;
+    camera.lookAt(cx,0,cz);
+  }else{
+    camera.lookAt(0,0,0);
+  }
 
   // RAGE MODE ultimi 2
-  if(alive.length===2){scene.background.setHex(0x220011);planeMat.emissiveIntensity=0.5;}else{scene.background.setHex(0x050010);planeMat.emissiveIntensity=0.25;}
+  if(alive.length===2){
+    scene.background.setHex(0x220011);
+    planeMat.emissiveIntensity=0.5;
+  }else{
+    scene.background.setHex(0x050010);
+    planeMat.emissiveIntensity=0.25;
+  }
 
-  aliveUI.textContent=`Vivi: ${alive.length}/4`;powersUI.innerHTML=alive.map(o=>`#${o.id+1} ${powerNames[o.power]}${o.isGiant?' 💥':''}`).join('<br>');
+  aliveUI.textContent=`Vivi: ${alive.length}/4`;
+  powersUI.innerHTML=alive.map(o=>{
+    let cd = o.power===0 && o.dashCd>0? ` ${o.dashCd.toFixed(1)}s` : '';
+    return `#${o.id+1} ${powerNames[o.power]}${o.isGiant?' 💥':''}${cd}`;
+  }).join('<br>');
+
   renderer.render(scene,camera);
 }
 tick();
