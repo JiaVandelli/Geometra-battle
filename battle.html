@@ -219,17 +219,9 @@ function loop(){
     slowMo = 1;
   }
 
-  // CAMERA
-  if(alive.length>1){
-    const cx = alive.reduce((s,o)=>s+o.mesh.position.x,0)/alive.length;
-    const cz = alive.reduce((s,o)=>s+o.mesh.position.z,0)/alive.length;
-    camera.position.x = Math.sin(clock.elapsedTime*0.15)*9 + cx*0.2;
-    camera.position.z = Math.cos(clock.elapsedTime*0.15)*9 + cz*0.2;
-    camera.position.y = 9;
-    camera.lookAt(cx,0,cz);
-  } else {
-    camera.lookAt(0,0,0);
-  }
+  // CAMERA FISSA DIAGONALE
+camera.position.set(8, 10, 12);
+camera.lookAt(0, 0, 0);
 
   // UI
   ui.a.textContent = `Vivi: ${alive.length}/4`;
