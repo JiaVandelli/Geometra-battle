@@ -43,6 +43,7 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x1e0b3a);
 scene.fog = new THREE.FogExp2(0x1e0b3a, 0.015);
 
+// SKY
 const skyMesh = new THREE.Mesh(
   new THREE.SphereGeometry(90,24,14),
   new THREE.ShaderMaterial({
@@ -55,6 +56,7 @@ const skyMesh = new THREE.Mesh(
 skyMesh.scale.set(-1,1,-1);
 scene.add(skyMesh);
 
+// LIGHTS
 scene.add(new THREE.HemisphereLight(0xb794f6, 0x0a0118, 1.0));
 const sun = new THREE.DirectionalLight(0xffffff, 1.1);
 sun.position.set(8,15,10);
@@ -64,11 +66,13 @@ scene.add(sun);
 const accent = new THREE.PointLight(0xA855F7, 2.5, 22);
 scene.add(accent);
 
+// CAMERA
 const camera = new THREE.PerspectiveCamera(58, innerWidth/innerHeight, 0.3, 200);
 camera.position.set(0, 12, 18);
 const camPos = new THREE.Vector3(0, 12, 18);
 const camLook = new THREE.Vector3(0, 5, 0);
 
+// PHYSICS
 const world = new CANNON.World({gravity: new CANNON.Vec3(0,-9.82,0)});
 world.broadphase = new CANNON.SAPBroadphase(world);
 world.solver.iterations = isMobile? 6 : 12;
@@ -82,13 +86,14 @@ ground.quaternion.setFromEuler(-Math.PI/2,0,0);
 ground.position.y = -1.5;
 world.addBody(ground);
 
-// GRIGLIA TERRENO - così si capisce dove sei
+// GRIGLIA TERRENO
 const grid = new THREE.GridHelper(60, 30, 0xA855F7, 0x5b21b6);
 grid.position.y = -1.49;
 grid.material.opacity = 0.35;
 grid.material.transparent = true;
 scene.add(grid);
 
+// MATERIALS
 const blue = new THREE.MeshStandardMaterial({color:0x7DD3FC, roughness:.3, metalness:.1});
 const purp = new THREE.MeshStandardMaterial({color:0xA855F7, roughness:.3, metalness:.1, emissive:0x6b21a8, emissiveIntensity:.5});
 const glass = new THREE.MeshStandardMaterial({color:0xaaddff, transparent:true, opacity:.6, emissive:0x0ea5e9, emissiveIntensity:.3, roughness:.1});
@@ -104,12 +109,11 @@ function addStatic(mesh, shape) {
   world.addBody(b);
 }
 
-const hp = new THREE.Mesh(new THREE.CylinderGeometry(2.2,4,32,1,true,0,Math.PI).rotateX(Math.PI/2).rotateZ(Math.PI), blue);
-hp.position.set(0,.7, 3); addStatic(hp, new CANNON.Cylinder(2.2,2.2,.5,20));
-const hpGlow = new THREE.Mesh(new THREE.PlaneGeometry(4,4), new THREE.MeshBasicMaterial({color:0x7DD3FC,transparent:true,opacity:.08,depthWrite:false}));
-hpGlow.rotation.x = -Math.PI/2; hpGlow.position.set(0,.02,3); scene.add(hpGlow);
+// ATTRACTIONS
+const hp = new THREE.Mesh(new THREE.CylinderGeometry(2.2,2.2,4,32,1,true,0,Math.PI).rotateX(Math.PI/2).rotateZ(Math.PI), blue);
+hp.position.set(0,.7,3); addStatic(hp, new CANNON.Cylinder(2.2,2.2,.5,20));
 
-const saddleGeo = new THREE.PlaneGeometry(5.5,28,28);
+const saddleGeo = new THREE.PlaneGeometry(5.5,5.5,28,28);
 const sPos = saddleGeo.attributes.position;
 for(let i=0;i<sPos.count;i++){ const x=sPos.getX(i),y=sPos.getY(i); sPos.setZ(i,.38*(x*x-y*y)); }
 saddleGeo.computeVertexNormals(); saddleGeo.rotateX(-Math.PI/2);
@@ -133,6 +137,7 @@ const hPts=[]; for(let i=0;i<=100;i++){ const t=i/100,a=t*7*Math.PI; hPts.push(n
 const helix = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(hPts),100,.18,8,false), blue);
 helix.position.set(0,0,0); addStatic(helix, new CANNON.Cylinder(1.2,1.2,12,12));
 
+// ORBO
 const ORBO_R = 0.32;
 const orboMat = new THREE.MeshStandardMaterial({color:0xA855F7, roughness:.2, metalness:.1, emissive:0xA855F7, emissiveIntensity:1.2});
 const orboMesh = new THREE.Mesh(new THREE.SphereGeometry(ORBO_R,32,32), orboMat);
@@ -143,10 +148,12 @@ const orboLight = new THREE.PointLight(0xA855F7, 2, 6); orboMesh.add(orboLight);
 const orboBody = new CANNON.Body({mass:1, shape:new CANNON.Sphere(ORBO_R), material:mat, linearDamping:.02, angularDamping:.02, allowSleep:false});
 orboBody.position.set(0,3,3); world.addBody(orboBody);
 
+// TRAIL
 const TRAIL_MAX = 60; const trailPool = []; const trailGroup = new THREE.Group(); scene.add(trailGroup); let trailCd = 0;
 function spawnTrail(pos){ if(trailPool.length>=TRAIL_MAX){const o=trailPool.shift();trailGroup.remove(o);} const m=new THREE.Mesh(new THREE.SphereGeometry(.07,6,6),new THREE.MeshBasicMaterial({color:0xff6b35,transparent:true,opacity:.7})); m.position.copy(pos); m.userData.life=1; trailGroup.add(m); trailPool.push(m); }
 function updateTrail(dt){ for(let i=trailPool.length-1;i>=0;i--){ const m=trailPool[i]; m.userData.life-=dt*2; m.material.opacity=Math.max(0,m.userData.life*.7); m.scale.setScalar(Math.max(.05,m.userData.life)); if(m.userData.life<=0){trailGroup.remove(m);trailPool.splice(i,1);} } }
 
+// ACTS
 const ACTS = [
   {n:"Half-Pipe",s:"dondola e rimbalza",d:13,spawn:[0,2.8,5.5],camOff:[0,4,8],m:'hp'},
   {n:"Sella",s:"geometria iperbolica",d:13,spawn:[0,6.5,0],camOff:[6,4,6],m:'sd'},
@@ -160,12 +167,62 @@ const titleEl=document.getElementById('actTitle'),tN=document.getElementById('ac
 let shownIdx=-1,gt=0;
 function getAct(){let t=gt%TOT;for(let i=0;i<ACTS.length;i++){if(t<ACTS[i].d)return{...ACTS[i],i,t};t-=ACTS[i].d;}return{...ACTS[0],i:0,t:0};}
 
-function ai(dt,a){const p=orboBody.position,v=orboBody.velocity;if(p.y<-5||Math.abs(p.x)>28||Math.abs(p.z)>28){orboBody.position.set(...a.spawn);orboBody.velocity.set(0,0,0);orboBody.angularVelocity.set(0,0,0);return;}const m=a.m,t=a.t;if(m==='hp'){orboBody.applyForce(new CANNON.Vec3(Math.sin(t*1.8)*5,0,0),p);if(t>5.5&&t<5.7)orboBody.velocity.y=5.5;if(t>9.5&&t<9.7)orboBody.velocity.y=5.5;}if(m==='sd'){const tx=Math.sin(t*.9)*2,tz=Math.cos(t*.7)*2;orboBody.applyForce(new CANNON.Vec3((tx-p.x)*3,0,(tz-p.z)*3),p);const sy=4.5+.38*(p.x*p.x-p.z*p.z);orboBody.applyForce(new CANNON.Vec3(0,(sy-p.y)*2,0),p);}if(m==='vx'){const dx=p.x+3.5,dz=p.z,r=Math.max(Math.hypot(dx,dz),.1);orboBody.applyForce(new CANNON.Vec3(-dz/r*5,-1.5,dx/r*5),p);if(r>2.8)orboBody.applyForce(new CANNON.Vec3(-dx*1.5,0,-dz*1.5),p);}if(m==='bc'){if(t<1.2)orboBody.applyForce(new CANNON.Vec3(-4,0,0),p);if(v.length()<.5&&t>2)orboBody.applyImpulse(new CANNON.Vec3(-2,0,0),p);}if(m==='lp'){orboBody.applyForce(new CANNON.Vec3(Math.sin(t*2.5)*6,0,0),p);if(t>3.5&&t<3.7)orboBody.velocity.y=7;if(t>9&&t<9.2)orboBody.velocity.y=7;}if(m==='hx'){const ang=t*2.2,tx=.9*Math.cos(ang),tz=.9*Math.sin(ang);orboBody.applyForce(new CANNON.Vec3((tx-p.x)*4,-1.2,(tz-p.z)*4),p);if(p.y<1){orboBody.position.set(0,14,0);orboBody.velocity.set(0,0,0);}}}
+function ai(dt,a){
+  const p=orboBody.position,v=orboBody.velocity;
+  if(p.y<-5||Math.abs(p.x)>28||Math.abs(p.z)>28){orboBody.position.set(...a.spawn);orboBody.velocity.set(0,0,0);orboBody.angularVelocity.set(0,0,0);return;}
+  const m=a.m,t=a.t;
+  if(m==='hp'){orboBody.applyForce(new CANNON.Vec3(Math.sin(t*1.8)*5,0,0),p);if(t>5.5&&t<5.7)orboBody.velocity.y=5.5;if(t>9.5&&t<9.7)orboBody.velocity.y=5.5;}
+  if(m==='sd'){const tx=Math.sin(t*.9)*2,tz=Math.cos(t*.7)*2;orboBody.applyForce(new CANNON.Vec3((tx-p.x)*3,0,(tz-p.z)*3),p);const sy=4.5+.38*(p.x*p.x-p.z*p.z);orboBody.applyForce(new CANNON.Vec3(0,(sy-p.y)*2,0),p);}
+  if(m==='vx'){const dx=p.x+3.5,dz=p.z,r=Math.max(Math.hypot(dx,dz),.1);orboBody.applyForce(new CANNON.Vec3(-dz/r*5,-1.5,dx/r*5),p);if(r>2.8)orboBody.applyForce(new CANNON.Vec3(-dx*1.5,0,-dz*1.5),p);}
+  if(m==='bc'){if(t<1.2)orboBody.applyForce(new CANNON.Vec3(-4,0,0),p);if(v.length()<.5&&t>2)orboBody.applyImpulse(new CANNON.Vec3(-2,0,0),p);}
+  if(m==='lp'){orboBody.applyForce(new CANNON.Vec3(Math.sin(t*2.5)*6,0,0),p);if(t>3.5&&t<3.7)orboBody.velocity.y=7;if(t>9&&t<9.2)orboBody.velocity.y=7;}
+  if(m==='hx'){const ang=t*2.2,tx=.9*Math.cos(ang),tz=.9*Math.sin(ang);orboBody.applyForce(new CANNON.Vec3((tx-p.x)*4,-1.2,(tz-p.z)*4),p);if(p.y<1){orboBody.position.set(0,14,0);orboBody.velocity.set(0,0,0);}}
+}
 
-function updateCamera(dt,act){const op=new THREE.Vector3().copy(orboMesh.position);const[ox,oy,oz]=act.camOff;const orbitAngle=gt*0.12;const rx=ox*Math.cos(orbitAngle)-oz*Math.sin(orbitAngle);const rz=ox*Math.sin(orbitAngle)+oz*Math.cos(orbitAngle);const desired=new THREE.Vector3(op.x+rx,op.y+oy,op.z+rz);if(desired.distanceTo(op)<5){desired.sub(op).normalize().multiplyScalar(5).add(op);}camPos.lerp(desired,dt*1.5);camLook.lerp(new THREE.Vector3(op.x,op.y+0.5,op.z),dt*3);camera.position.copy(camPos);camera.lookAt(camLook);}
+function updateCamera(dt,act){
+  const op=new THREE.Vector3().copy(orboMesh.position);
+  const[ox,oy,oz]=act.camOff;
+  const orbitAngle=gt*0.12;
+  const rx=ox*Math.cos(orbitAngle)-oz*Math.sin(orbitAngle);
+  const rz=ox*Math.sin(orbitAngle)+oz*Math.cos(orbitAngle);
+  const desired=new THREE.Vector3(op.x+rx,op.y+oy,op.z+rz);
+  if(desired.distanceTo(op)<5){desired.sub(op).normalize().multiplyScalar(5).add(op);}
+  camPos.lerp(desired,dt*1.5);
+  camLook.lerp(new THREE.Vector3(op.x,op.y+0.5,op.z),dt*3);
+  camera.position.copy(camPos);
+  camera.lookAt(camLook);
+}
 
 const clock=new THREE.Clock();
-function tick(){requestAnimationFrame(tick);const dt=Math.min(clock.getDelta(),.033);gt+=dt;world.step(1/60,dt,3);const a=getAct();if(a.i!==shownIdx){shownIdx=a.i;tN.textContent=a.n;tS.textContent=a.s;badge.textContent=`${a.i+1} / ${ACTS.length}`;titleEl.classList.add('show');setTimeout(()=>titleEl.classList.remove('show'),1900);orboBody.position.set(...a.spawn);orboBody.velocity.set(0,0,0);orboBody.angularVelocity.set(0,0,0);const[ox,oy,oz]=a.camOff;const sp=new THREE.Vector3(...a.spawn);camPos.set(sp.x+ox,sp.y+oy,sp.z+oz);camLook.copy(sp);}ai(dt,a);orboMesh.position.copy(orboBody.position);const vel=orboBody.velocity;orboMesh.rotation.x+=vel.length()*dt*2;const speed=vel.length();orboMat.emissiveIntensity=.9+Math.sin(gt*5)*.12+Math.min(speed*.06,.35);orboLight.intensity=1.5+Math.min(speed*.1,.8);trailCd-=dt;if(speed>1&&trailCd<=0){spawnTrail(orboMesh.position);trailCd=.055;}updateTrail(dt);accent.position.lerp(orboMesh.position,dt*2.5);updateCamera(dt,a);fRim.rotation.z+=dt*.4;loopGlow.rotation.z+=dt*.25;bar.style.width=`${(gt%TOT)/TOT*100}%`;renderer.render(scene,camera);}tick();
+function tick(){
+  requestAnimationFrame(tick);
+  const dt=Math.min(clock.getDelta(),.033);gt+=dt;world.step(1/60,dt,3);
+  const a=getAct();
+  if(a.i!==shownIdx){
+    shownIdx=a.i;
+    tN.textContent=a.n;tS.textContent=a.s;badge.textContent=`${a.i+1} / ${ACTS.length}`;
+    titleEl.classList.add('show');setTimeout(()=>titleEl.classList.remove('show'),1900);
+    orboBody.position.set(...a.spawn);orboBody.velocity.set(0,0,0);orboBody.angularVelocity.set(0,0,0);
+    const[ox,oy,oz]=a.camOff;const sp=new THREE.Vector3(...a.spawn);
+    camPos.set(sp.x+ox,sp.y+oy,sp.z+oz);camLook.copy(sp);
+  }
+  ai(dt,a);
+  orboMesh.position.copy(orboBody.position);
+  const vel=orboBody.velocity;
+  orboMesh.rotation.x+=vel.length()*dt*2;
+  const speed=vel.length();
+  orboMat.emissiveIntensity=.9+Math.sin(gt*5)*.12+Math.min(speed*.06,.35);
+  orboLight.intensity=1.5+Math.min(speed*.1,.8);
+  trailCd-=dt;if(speed>1&&trailCd<=0){spawnTrail(orboMesh.position);trailCd=.055;}
+  updateTrail(dt);
+  accent.position.lerp(orboMesh.position,dt*2.5);
+  updateCamera(dt,a);
+  fRim.rotation.z+=dt*.4;
+  loopGlow.rotation.z+=dt*.25;
+  bar.style.width=`${(gt%TOT)/TOT*100}%`;
+  renderer.render(scene,camera);
+}
+tick();
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
 </script>
 </body>
