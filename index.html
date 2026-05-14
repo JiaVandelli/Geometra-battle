@@ -4,22 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
 <title>Orbo — Zoo Fisico</title>
-<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","cannon-es":"https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-html,body{width:100%;height:100%;overflow:hidden;background:#1a0a2e;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;touch-action:none}
-canvas{display:block}
-#actTitle{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:20;text-align:center;pointer-events:none;opacity:0;transition:opacity 0.5s}
-#actTitle h2{font-size:clamp(28px,8vw,64px);font-weight:900;color:#fff;letter-spacing:3px;text-transform:uppercase;text-shadow:0 0 40px rgba(168,85,247,0.9),0 0 80px rgba(168,85,247,0.4);margin-bottom:8px}
-#actTitle p{font-size:clamp(11px,2.5vw,16px);color:rgba(255,255,255,0.5);letter-spacing:4px;text-transform:uppercase;font-weight:300}
-#actTitle.show{opacity:1}
-#topbar{position:fixed;top:0;left:0;right:0;z-index:10;display:flex;justify-content:space-between;align-items:center;padding:16px 20px;pointer-events:none}
-#logo{font-size:22px;font-weight:900;color:#fff;letter-spacing:-0.5px}
-#logo em{color:#A855F7;font-style:normal}
-#actBadge{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.45);background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);padding:5px 14px;border-radius:100px;transition:color 0.5s}
-#progress{position:fixed;bottom:0;left:0;right:0;height:3px;background:rgba(255,255,255,0.08);z-index:10}
-#progressFill{height:100%;width:0%;background:linear-gradient(90deg,#A855F7,#7DD3FC);transition:width 0.3s}
-</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
+<style>*{margin:0;padding:0;box-sizing:border-box}html,body{width:100%;height:100%;overflow:hidden;background:#1a0a2e;font-family:sans-serif;touch-action:none}canvas{display:block}#actTitle{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:20;text-align:center;pointer-events:none;opacity:0;transition:opacity.5s}#actTitle.show{opacity:1}#actTitle h2{font-size:clamp(28px,8vw,64px);font-weight:900;color:#fff;letter-spacing:3px;text-transform:uppercase;text-shadow:0 0 40px #A855F7}#actTitle p{font-size:14px;color:#fff8;letter-spacing:4px;text-transform:uppercase}#topbar{position:fixed;top:0;left:0;right:0;padding:16px 20px;display:flex;justify-content:space-between;z-index:10;pointer-events:none}#logo{font-size:22px;font-weight:900;color:#fff}#logo em{color:#A855F7;font-style:normal}#actBadge{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#fff7;background:#fff1;padding:5px 14px;border-radius:100px}#progress{position:fixed;bottom:0;left:0;right:0;height:3px;background:#fff1}#progressFill{height:100%;width:0%;background:linear-gradient(90deg,#A855F7,#7DD3FC)}</style>
 </head>
 <body>
 <div id="actTitle"><h2 id="actName">–</h2><p id="actSub">–</p></div>
@@ -28,198 +14,64 @@ canvas{display:block}
 <script type="module">
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
-
-const isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent);
-
-// ── RENDERER ──────────────────────────────────────────────────────────────────
-const renderer = new THREE.WebGLRenderer({ antialias:true, powerPreference:'high-performance' });
-renderer.setSize(innerWidth, innerHeight);
-renderer.setPixelRatio(isMobile? 1 : Math.min(devicePixelRatio, 1.5));
-renderer.shadowMap.enabled = true;
-if (isMobile) renderer.shadowMap.enabled = false;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.1;
+const isMobile=/Mobi|Android|iPhone/i.test(navigator.userAgent);
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(innerWidth,innerHeight);
+renderer.setPixelRatio(isMobile?1:1.5);
+renderer.outputColorSpace=THREE.SRGBColorSpace;
 document.body.appendChild(renderer.domElement);
 
-// ── SCENE ─────────────────────────────────────────────────────────────────────
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0d0520);
-scene.fog = new THREE.FogExp2(0x0d0520, 0.022);
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x0d0520);scene.fog=new THREE.FogExp2(0x0d0520,0.022);
+const sky=new THREE.Mesh(new THREE.SphereGeometry(90,24,14),new THREE.ShaderMaterial({side:THREE.BackSide,uniforms:{t:{value:new THREE.Color(0x0a0118)},b:{value:new THREE.Color(0x2d0a4e)}},vertexShader:`varying float y;void main(){y=normalize(position).y;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,fragmentShader:`uniform vec3 t,b;varying float y;void main(){gl_FragColor=vec4(mix(b,t,y*.5+.5),1.);}`}));sky.scale.set(-1,1,-1);scene.add(sky);
+scene.add(new THREE.HemisphereLight(0x9b59ff,0x0a0118,.7));
+const sun=new THREE.DirectionalLight(0xfff,1);sun.position.set(8,15,10);scene.add(sun);
+const accent=new THREE.PointLight(0xA855F7,2,20);scene.add(accent);
+const camera=new THREE.PerspectiveCamera(65,innerWidth/innerHeight,.1,200);camera.position.set(0,10,16);
 
-const skyG = new THREE.SphereGeometry(90,24,14); skyG.scale(-1,1,-1);
-scene.add(new THREE.Mesh(skyG, new THREE.ShaderMaterial({
-  uniforms:{top:{value:new THREE.Color(0x0a0118)},bot:{value:new THREE.Color(0x2d0a4e)}},
-  vertexShader:`varying float vy;void main(){vy=normalize((modelMatrix*vec4(position,1.0)).xyz).y;gl_Position=projectionMatrix*viewMatrix*modelMatrix*vec4(position,1.0);}`,
-  fragmentShader:`uniform vec3 top,bot;varying float vy;void main(){float t=clamp(vy*0.5+0.5,0.0,1.0);t=t*t*(3.0-2.0*t);gl_FragColor=vec4(mix(bot,top,t),1.0);}`,
-  side:THREE.BackSide
-})));
+const world=new CANNON.World({gravity:new CANNON.Vec3(0,-9.82,0)});world.solver.iterations=isMobile?6:12;
+const mat=new CANNON.Material();world.defaultContactMaterial=new CANNON.ContactMaterial(mat,mat,{friction:.4,restitution:.15});
+const ground=new CANNON.Body({mass:0,shape:new CANNON.Plane(),material:mat});ground.quaternion.setFromEuler(-Math.PI/2,0,0);ground.position.y=-1.5;world.addBody(ground);
 
-// ── LIGHTS ────────────────────────────────────────────────────────────────────
-scene.add(new THREE.HemisphereLight(0x9b59ff, 0x0a0118, 0.6));
-const sun = new THREE.DirectionalLight(0xffeedd, 1.2);
-sun.position.set(8,18,10);
-sun.castShadow = true;
-sun.shadow.mapSize.set(1024,1024);
-sun.shadow.camera.near = 1; sun.shadow.camera.far = 80;
-sun.shadow.camera.left = -25; sun.shadow.camera.right = 25;
-sun.shadow.camera.top = 25; sun.shadow.camera.bottom = -25;
-sun.shadow.bias = -0.002;
-scene.add(sun);
-const accent = new THREE.PointLight(0xA855F7, 1.5, 18);
-accent.position.set(-3, 8, 0);
-scene.add(accent);
+const blue=new THREE.MeshStandardMaterial({color:0x7DD3FC,roughness:.3});
+const purp=new THREE.MeshStandardMaterial({color:0xA855F7,roughness:.3,emissive:0x6b21a8,emissiveIntensity:.4});
+const glass=new THREE.MeshStandardMaterial({color:0xaaddff,transparent:true,opacity:.6,emissive:0x0ea5e9,emissiveIntensity:.2});
+function addBody(m,s){scene.add(m);const b=new CANNON.Body({mass:0,material:mat});b.addShape(s);b.position.copy(m.position);b.quaternion.copy(m.quaternion);world.addBody(b);}
 
-const camera = new THREE.PerspectiveCamera(65, innerWidth/innerHeight, 0.1, 200);
-camera.position.set(0, 10, 16);
-// ── PHYSICS ──────────────────────────────────────────────────────────────────
-const world = new CANNON.World({ gravity: new CANNON.Vec3(0,-9.82,0) });
-world.broadphase = new CANNON.SAPBroadphase(world);
-world.solver.iterations = 12;
-world.allowSleep = false;
+const hp=new THREE.Mesh(new THREE.CylinderGeometry(2.2,2.2,4,32,1,true,0,Math.PI).rotateX(Math.PI/2).rotateZ(Math.PI),blue);hp.position.set(0,.7,3);addBody(hp,new CANNON.Cylinder(2.2,2.2,.5,20));
+const saddle=new THREE.Mesh(new THREE.PlaneGeometry(5.5,5.5,20,20),glass);saddle.position.set(0,4.5,0);saddle.rotation.x=-Math.PI/2;const sp=saddle.geometry.attributes.position;for(let i=0;i<sp.count;i++){const x=sp.getX(i),y=sp.getY(i);sp.setZ(i,.38*(x*x-y*y));}saddle.geometry.computeVertexNormals();addBody(saddle,new CANNON.Box(new CANNON.Vec3(2.7,.1,2.7)));
+const funnel=new THREE.Mesh(new THREE.ConeGeometry(2.8,2.2,32,1,true).rotateX(Math.PI),purp);funnel.position.set(-3.5,7.5,0);funnel.material.side=2;addBody(funnel,new CANNON.Sphere(2.5));
+const bPts=[];for(let i=0;i<=80;i++){const t=i/80*4.5;bPts.push(new THREE.Vector3(1.2*(t-Math.sin(t)),-1.2*(1-Math.cos(t)),0));}
+const brach=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(bPts),80,.22,10,false).rotateY(Math.PI).rotateZ(-.12),purp);brach.position.set(3.5,11.2,-.5);addBody(brach,new CANNON.Box(new CANNON.Vec3(2,.3,1)));
+const loop=new THREE.Mesh(new THREE.TorusGeometry(1.5,.18,10,40).rotateX(Math.PI/2),purp);loop.position.set(0,13,-1.5);addBody(loop,new CANNON.Box(new CANNON.Vec3(1.7,.4,1.7)));
+const hPts=[];for(let i=0;i<=100;i++){const t=i/100,a=t*7*Math.PI;hPts.push(new THREE.Vector3(.9*Math.cos(a),1+t*12,.9*Math.sin(a)));}
+const helix=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(hPts),80,.18,8,false),blue);helix.position.set(0,0,0);addBody(helix,new CANNON.Cylinder(1.2,1.2,12,12));
 
-const mat = new CANNON.Material('default');
-const contactMat = new CANNON.ContactMaterial(mat, mat, { friction:0.3, restitution:0.22 });
-world.addContactMaterial(contactMat);
-world.defaultContactMaterial = contactMat;
+// GLOW FIXATI
+const g1=new THREE.Mesh(new THREE.PlaneGeometry(4,4),new THREE.MeshBasicMaterial({color:0x7DD3FC,transparent:true,opacity:.05}));g1.rotation.x=-Math.PI/2;g1.position.set(0,.02,3);scene.add(g1);
+const g2=new THREE.Mesh(new THREE.TorusGeometry(2.8,.08,12,60),new THREE.MeshBasicMaterial({color:0xA855F7}));g2.rotation.x=Math.PI/2;g2.position.set(-3.5,7.5,0);scene.add(g2);
 
-const groundBody = new CANNON.Body({ mass:0, material:mat, shape:new CANNON.Plane() });
-groundBody.quaternion.setFromEuler(-Math.PI/2,0,0);
-groundBody.position.y = -1.5;
-world.addBody(groundBody);
+const R=.32;const orbo=new THREE.Mesh(new THREE.SphereGeometry(R,32,32),new THREE.MeshStandardMaterial({color:0xA855F7,emissive:0xA855F7,emissiveIntensity:1,roughness:.2}));scene.add(orbo);
+orbo.add(new THREE.Mesh(new THREE.SphereGeometry(R*2.2,16,16),new THREE.MeshBasicMaterial({color:0xA855F7,transparent:true,opacity:.08})));
+orbo.add(new THREE.PointLight(0xA855F7,1.5,5));
+const body=new CANNON.Body({mass:1,shape:new CANNON.Sphere(R),material:mat,linearDamping:.02});body.position.set(0,3,3);world.addBody(body);
 
-const matBlue = new THREE.MeshStandardMaterial({ color:0x7DD3FC, roughness:0.35, metalness:0.1 });
-const matPurp = new THREE.MeshStandardMaterial({ color:0xA855F7, roughness:0.3, metalness:0.15, emissive:0x6b21a8, emissiveIntensity:0.3 });
-const matGlass = new THREE.MeshStandardMaterial({ color:0xaaddff, roughness:0.1, metalness:0.3, transparent:true, opacity:0.65, emissive:0x0ea5e9, emissiveIntensity:0.2 });
+const ACTS=[{n:"Half-Pipe",s:"dondola e salta",d:12,spawn:[0,2.8,5.5],cam:[0,5,10],look:[0,1,3],m:'hp'},{n:"Sella",s:"geometria impossibile",d:12,spawn:[0,6.5,0],cam:[5,7,5],look:[0,4.5,0],m:'sd'},{n:"Vortice",s:"spirale ipnotica",d:12,spawn:[-3.5,9.5,0],cam:[-6,10,4],look:[-3.5,7.5,0],m:'vx'},{n:"Brachistocrona",s:"la discesa più veloce",d:12,spawn:[3.5,11.6,-.5],cam:[7,12,3],look:[3.5,10,-.5],m:'bc'},{n:"Loop",s:"giro della morte",d:12,spawn:[0,14.5,-1.5],cam:[4,14,4],look:[0,13,-1.5],m:'lp'},{n:"Elica",s:"vite senza fine",d:14,spawn:[0,14,0],cam:[5,9,5],look:[0,7,0],m:'hx'}];
+const TOT=ACTS.reduce((a,b)=>a+b.d,0);
+const title=document.getElementById('actTitle'),tN=document.getElementById('actName'),tS=document.getElementById('actSub'),badge=document.getElementById('actBadge'),bar=document.getElementById('progressFill');
+let show=-1,gt=0;
+function now(){let t=gt%TOT;for(let i=0;i<ACTS.length;i++){if(t<ACTS[i].d)return{...ACTS[i],i,t};t-=ACTS[i].d;}return{...ACTS[0],i:0,t:0}}
 
-function addStaticMesh(mesh) {
-  mesh.receiveShadow = true;
-  mesh.castShadow = true;
-  scene.add(mesh);
-  const g = mesh.geometry.clone();
-  if (!g.index) { const n = g.attributes.position.count; const idx = []; for (let i=0; i<n; i++) idx.push(i); g.setIndex(idx); }
-  const verts = Array.from(g.attributes.position.array);
-  const idxs = Array.from(g.index.array);
-  const shape = new CANNON.Trimesh(verts, idxs);
-  const body = new CANNON.Body({ mass:0, material:mat });
-  body.addShape(shape);
-  body.position.copy(mesh.position);
-  body.quaternion.copy(mesh.quaternion);
-  world.addBody(body);
-  return body;
+function ai(dt,a){const p=body.position;if(p.y<-5||Math.abs(p.x)>25||Math.abs(p.z)>25){body.position.set(...a.spawn);body.velocity.set(0,0,0);return;}
+ if(a.m==='hp'){body.applyForce(new CANNON.Vec3(Math.sin(a.t*2)*4,0,0),p);if(a.t>6&&a.t<6.2)body.velocity.y=5;}
+ if(a.m==='sd'){body.applyForce(new CANNON.Vec3((Math.sin(a.t)-p.x)*2,0,(Math.cos(a.t)-p.z)*2),p);}
+ if(a.m==='vx'){const dx=p.x+3.5,dz=p.z;body.applyForce(new CANNON.Vec3(-dz*3,-1,dx*3),p);}
+ if(a.m==='bc'){if(a.t<1)body.applyForce(new CANNON.Vec3(-3,0,0),p);}
+ if(a.m==='lp'){body.applyForce(new CANNON.Vec3(Math.sin(a.t*3)*5,0,0),p);if(a.t>4&&a.t<4.15)body.velocity.y=6;}
+ if(a.m==='hx'){const ang=a.t*2;body.applyForce(new CANNON.Vec3(Math.cos(ang)-p.x,-1,Math.sin(ang)-p.z),p);}
 }
-
-// 1. HALF-PIPE
-const hpMesh = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 4, 32, 1, true, 0, Math.PI).rotateX(Math.PI/2).rotateZ(Math.PI), matBlue);
-hpMesh.position.set(0, 0.7, 3);
-addStaticMesh(hpMesh);
-const hpGlow = new THREE.Mesh(new THREE.PlaneGeometry(4,4), new THREE.MeshBasicMaterial({ color:0x7DD3FC, transparent:true, opacity:0.06, depthWrite:false }));
-hpGlow.rotation.x = -Math.PI/2; hpGlow.position.set(0,0.01,3); scene.add(hpGlow);
-
-// 2. SELLA - RIDOTTA
-const saddleGeo = new THREE.PlaneGeometry(5.5, 5.5, 20, 20);
-const sPos = saddleGeo.attributes.position;
-for (let i=0; i<sPos.count; i++) { const x = sPos.getX(i), y = sPos.getY(i); sPos.setZ(i, 0.38*(x*x - y*y)); }
-saddleGeo.computeVertexNormals(); saddleGeo.rotateX(-Math.PI/2);
-const saddleMesh = new THREE.Mesh(saddleGeo, matGlass); saddleMesh.position.set(0, 4.5, 0); addStaticMesh(saddleMesh);
-
-// 3. VORTEX
-const funnelGeo = new THREE.ConeGeometry(2.8, 2.2, 40, 1, true).rotateX(Math.PI); funnelGeo.computeVertexNormals();
-const funnelMesh = new THREE.Mesh(funnelGeo, matPurp.clone()); funnelMesh.material.side = THREE.DoubleSide; funnelMesh.position.set(-3.5, 7.5, 0); addStaticMesh(funnelMesh);
-const fRim = new THREE.Mesh(new THREE.TorusGeometry(2.8, 0.08, 12, 80), new THREE.MeshBasicMaterial({ color:0xA855F7 })); fRim.rotation.x = Math.PI/2; fRim.position.copy(funnelMesh.position); scene.add(fRim);
-
-// 4. BRACHISTOCHRONE
-const bPts = []; const bR = 1.2, bTmax = 1.45*Math.PI;
-for (let i=0; i<=100; i++) { const t = i/100*bTmax; bPts.push(new THREE.Vector3(bR*(t-Math.sin(t)), -bR*(1-Math.cos(t)), 0)); }
-const bCurve = new THREE.CatmullRomCurve3(bPts);
-const bGeo = new THREE.TubeGeometry(bCurve, 120, 0.22, 12, false).rotateY(Math.PI).rotateZ(-0.12);
-const bMesh = new THREE.Mesh(bGeo, matPurp); bMesh.position.set(3.5, 11.2, -0.5); addStaticMesh(bMesh);
-const bPlatform = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.15, 1.2), matBlue); bPlatform.position.set(3.5, 11.25, -0.5); scene.add(bPlatform);
-
-// 5. LOOP - RIDOTTO
-const loopMesh = new THREE.Mesh(new THREE.TorusGeometry(1.5, 0.18, 10, 40).rotateX(Math.PI/2), matPurp);
-loopMesh.position.set(0, 13, -1.5); addStaticMesh(loopMesh);
-const loopGlow = new THREE.Mesh(new THREE.TorusGeometry(1.5, 0.5, 8, 90), new THREE.MeshBasicMaterial({ color:0xA855F7, transparent:true, opacity:0.05, depthWrite:false, side:THREE.DoubleSide })); loopGlow.position.copy(loopMesh.position); loopGlow.rotation.x = Math.PI/2; scene.add(loopGlow);
-
-// 6. HELIX - RIDOTTA
-const helixPts = []; for (let i=0; i<=120; i++) { const t = i/120; const angle = t * 7 * Math.PI; helixPts.push(new THREE.Vector3(0.9*Math.cos(angle), 1+t*12, 0.9*Math.sin(angle))); }
-const helixGeo = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(helixPts), 80, 0.18, 10, false);
-const helixMesh = new THREE.Mesh(helixGeo, matBlue); helixMesh.position.set(0, 0, 0); addStaticMesh(helixMesh);
-
-// ── ORBO ──────────────────────────────────────────────────────────────────────
-const ORBO_R = 0.32;
-const orboMat = new THREE.MeshStandardMaterial({ color:0xA855F7, roughness:0.22, metalness:0.1, emissive:0xA855F7, emissiveIntensity:0.9 });
-const orboMesh = new THREE.Mesh(new THREE.SphereGeometry(ORBO_R, 28, 28), orboMat); orboMesh.castShadow = true; scene.add(orboMesh);
-const orboHalo = new THREE.Mesh(new THREE.SphereGeometry(ORBO_R*2.2, 16, 16), new THREE.MeshBasicMaterial({ color:0xA855F7, transparent:true, opacity:0.08, depthWrite:false })); orboMesh.add(orboHalo);
-const orboLight = new THREE.PointLight(0xA855F7, 1.2, 4); orboMesh.add(orboLight);
-const orboBody = new CANNON.Body({ mass:1, shape:new CANNON.Sphere(ORBO_R), material:mat, linearDamping:0.02, angularDamping:0.02, allowSleep:false });
-orboBody.position.set(0, 3, 3); world.addBody(orboBody);
-
-// ── TRAIL ─────────────────────────────────────────────────────────────────────
-const TRAIL_MAX = 80; const trailPool = []; const trailGroup = new THREE.Group(); scene.add(trailGroup);
-const trailMeshMat = new THREE.MeshBasicMaterial({ color:0xff6b35, transparent:true, opacity:0.7 }); let trailCd = 0;
-function spawnTrail(pos){ if (trailPool.length >= TRAIL_MAX) { const old = trailPool.shift(); trailGroup.remove(old); } const m = new THREE.Mesh(new THREE.SphereGeometry(0.09, 6, 6), trailMeshMat.clone()); m.position.copy(pos); m.userData.life = 1.0; trailGroup.add(m); trailPool.push(m); }
-function updateTrail(dt){ for (let i=trailPool.length-1; i>=0; i--) { const m = trailPool[i]; m.userData.life -= dt*1.6; m.material.opacity = Math.max(0, m.userData.life * 0.7); m.scale.setScalar(Math.max(0.1, m.userData.life)); if (m.userData.life <= 0) { trailGroup.remove(m); trailPool.splice(i, 1); } } }
-
-// ── ACTS ──────────────────────────────────────────────────────────────────────
-const ACTS = [
-  { name:"Half-Pipe", sub:"La curva perfetta per rotolare", dur:16, spawn:[0, 2.8, 5.5], camPos:[0, 5, 10], camLook:[0, 1, 3], mode:"halfpipe" },
-  { name:"Superficie a Sella", sub:"Geometria iperbolica", dur:16, spawn:[2.5, 6.5, 0], camPos:[6, 8, 5], camLook:[0, 4.5, 0], mode:"saddle" },
-  { name:"Vortice", sub:"Caduta a spirale", dur:16, spawn:[-3.5, 10, 0], camPos:[-7, 11, 5], camLook:[-3.5, 7.5, 0], mode:"funnel" },
-  { name:"Brachistocrona", sub:"La curva di discesa più rapida", dur:16, spawn:[3.5, 11.6, -0.5], camPos:[7, 13, 4], camLook:[3.5, 11, -0.5], mode:"brach" },
-  { name:"Loop", sub:"Il cerchio perfetto", dur:16, spawn:[0, 13.8, -1.5], camPos:[5, 14, 3], camLook:[0, 13, -1.5], mode:"loop" },
-  { name:"Elica", sub:"La vite di Archimede", dur:16, spawn:[0, 14.5, 0], camPos:[5, 10, 5], camLook:[0, 7, 0], mode:"helix" },
-];
-const TOTAL_DUR = ACTS.reduce((s,a)=>s+a.dur, 0);
-
-const actTitleEl = document.getElementById('actTitle'); const actNameEl = document.getElementById('actName'); const actSubEl = document.getElementById('actSub'); const actBadgeEl = document.getElementById('actBadge'); const progFill = document.getElementById('progressFill');
-let shownAct = -1;
-function showActTitle(act){ actNameEl.textContent = act.name; actSubEl.textContent = act.sub; actTitleEl.classList.add('show'); actBadgeEl.textContent = `${ACTS.indexOf(act)+1} / ${ACTS.length}`; setTimeout(()=>actTitleEl.classList.remove('show'), 2200); }
-
-function runAI(dt, mode, actTime){
-  const p = orboBody.position; const v = orboBody.velocity; const speed = v.length();
-  if (p.y < -4 || Math.abs(p.x) > 20 || Math.abs(p.z) > 20) { const act = getCurrentAct().act; orboBody.position.set(...act.spawn); orboBody.velocity.set(0,0,0); orboBody.angularVelocity.set(0,0,0); }
-  if (p.y < 0.5) orboBody.applyForce(new CANNON.Vec3(0, 4, 0), p);
-  if (mode === 'halfpipe') { const sway = Math.sin(actTime * 1.8) * 5; orboBody.applyForce(new CANNON.Vec3(sway, 0, 0), p); if (speed < 1) orboBody.applyImpulse(new CANNON.Vec3(2,0.5,0), p); }
-  else if (mode === 'saddle') { const tx = Math.sin(actTime*0.9)*2.2; const tz = Math.cos(actTime*0.7)*2.2; const dx = tx-p.x, dz = tz-p.z; orboBody.applyForce(new CANNON.Vec3(dx*3, 0, dz*3), p); const targetY = 4.5 + 0.38*(p.x*p.x - p.z*p.z); orboBody.applyForce(new CANNON.Vec3(0, (targetY-p.y)*2, 0), p); }
-  else if (mode === 'funnel') { const cx=-3.5, cy=7.5; const rx=p.x-cx, rz=p.z; const r2=Math.hypot(rx,rz); orboBody.applyForce(new CANNON.Vec3(-rz/Math.max(r2,0.1)*6, -1, rx/Math.max(r2,0.1)*6), p); if (r2 > 2.5) orboBody.applyForce(new CANNON.Vec3(-rx*1.5,0,-rz*1.5), p); if (p.y > cy+1) orboBody.applyForce(new CANNON.Vec3(0,-3,0), p); }
-  else if (mode === 'brach') { if (actTime < 2) { orboBody.applyForce(new CANNON.Vec3(-2, 0, 0), p); } const tx = 3.5 - actTime * 0.4; orboBody.applyForce(new CANNON.Vec3((tx-p.x)*1.5, 0, (-0.5-p.z)*2), p); if (speed < 0.5 && actTime > 2) orboBody.applyImpulse(new CANNON.Vec3(-1.5,-0.5,0), p); }
-  else if (mode === 'loop') { const side = Math.sin(actTime*0.7) > 0? 1 : -1; orboBody.applyForce(new CANNON.Vec3(side*8, 0, 0), p); const dy = p.y - 13; const dz = p.z + 1.5; const dr = Math.hypot(dy, dz); if (dr < 2.5) orboBody.applyForce(new CANNON.Vec3(0, -dy/dr*5, -dz/dr*5), p); if (speed < 2) orboBody.applyImpulse(new CANNON.Vec3(side*3, 0.5, 0), p); }
-  else if (mode === 'helix') { const angle = actTime * 2.2; const tx = 0.9*Math.cos(angle); const tz = 0.9*Math.sin(angle); orboBody.applyForce(new CANNON.Vec3((tx-p.x)*4, -1.5, (tz-p.z)*4), p); if (p.y < 1 && speed < 1) { orboBody.position.set(0, 14.5, 0); orboBody.velocity.set(0,0,0); } }
-  const rollVel = new THREE.Vector3(v.x, 0, v.z); if (rollVel.lengthSq() > 0.01) { const axis = new THREE.Vector3(-v.z, 0, v.x).normalize(); const angle = rollVel.length() * 0.016 / ORBO_R; orboMesh.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(axis, angle)); }
-}
-
-const camTargetPos = new THREE.Vector3(0, 10, 16); const camLookTarget = new THREE.Vector3(0, 6, 0);
-function updateCamera(dt, act, actTime){ const ap = new THREE.Vector3(...act.camPos); const al = new THREE.Vector3(...act.camLook); const orb = actTime * 0.18; ap.x += Math.sin(orb) * 1.5; ap.z += Math.cos(orb) * 0.8; const orboPos = orboMesh.position.clone(); ap.lerp(orboPos.clone().add(new THREE.Vector3(3, 2, 4)), 0.25); al.lerp(orboPos, 0.6); camTargetPos.lerp(ap, dt*1.2); camLookTarget.lerp(al, dt*1.8); camera.position.copy(camTargetPos); camera.lookAt(camLookTarget); }
-
-let globalTime = 0;
-function getCurrentAct(){ let t = globalTime % TOTAL_DUR; for (const act of ACTS) { if (t < act.dur) return { act, actTime: t }; t -= act.dur; } return { act: ACTS[0], actTime: 0 }; }
-function getActIndex(){ let t = globalTime % TOTAL_DUR; for (let i=0; i<ACTS.length; i++) { if (t < ACTS[i].dur) return i; t -= ACTS[i].dur; } return 0; }
-
-const clock = new THREE.Clock();
-setTimeout(()=>{ orboBody.applyImpulse(new CANNON.Vec3(1.5, 0.3, 0.5), orboBody.position); }, 800);
-
-function animate(){
-  requestAnimationFrame(animate);
-  const dt = Math.min(clock.getDelta(), 0.033); globalTime += dt;
-  world.step(1/60, dt, 3);
-  const { act, actTime } = getCurrentAct(); const actIdx = getActIndex();
-  if (actIdx!== shownAct) { shownAct = actIdx; showActTitle(act); orboBody.position.set(...act.spawn); orboBody.velocity.set(0,0,0); orboBody.angularVelocity.set(0,0,0); }
-  runAI(dt, act.mode, actTime);
-  orboMesh.position.copy(orboBody.position);
-  const speed = orboBody.velocity.length();
-  orboMat.emissiveIntensity = 0.75 + Math.sin(globalTime*4)*0.15 + Math.min(speed*0.08,0.4);
-  orboHalo.material.opacity = 0.06 + Math.min(speed*0.01,0.08);
-  orboLight.intensity = 1.0 + Math.min(speed*0.1,1.0);
-  trailCd -= dt; if (speed > 1.2 && trailCd <= 0) { spawnTrail(orboMesh.position); trailCd = 0.05; }
-  updateTrail(dt); updateCamera(dt, act, actTime); accent.position.lerp(orboMesh.position, dt*2);
-  fRim.rotation.z += dt * 0.5; loopGlow.rotation.z += dt * 0.3;
-  const totalElapsed = globalTime % TOTAL_DUR; progFill.style.width = (totalElapsed / TOTAL_DUR * 100) + '%';
-  renderer.render(scene, camera);
-}
-animate();
-
-addEventListener('resize', ()=>{ camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+const clock=new THREE.Clock();
+function tick(){requestAnimationFrame(tick);const dt=Math.min(clock.getDelta(),.033);gt+=dt;world.step(1/60,dt,3);const a=now();if(a.i!==show){show=a.i;tN.textContent=a.n;tS.textContent=a.s;badge.textContent=`${a.i+1}/${ACTS.length}`;title.classList.add('show');setTimeout(()=>title.classList.remove('show'),1800);body.position.set(...a.spawn);body.velocity.set(0,0,0);}ai(dt,a);orbo.position.copy(body.position);orbo.rotation.x+=body.velocity.length()*dt*2;accent.position.lerp(orbo.position,.1);camera.position.lerp(new THREE.Vector3(...a.cam),dt*1.2);camera.lookAt(...a.look);bar.style.width=`${gt%TOT/TOT*100}%`;renderer.render(scene,camera);}tick();
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
 </script>
 </body>
 </html>
