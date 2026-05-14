@@ -39,52 +39,53 @@ const renderer = new THREE.WebGLRenderer({antialias:true});
 renderer.setSize(innerWidth, innerHeight);
 document.body.appendChild(renderer.domElement);
 
-// LUCI
 scene.add(new THREE.HemisphereLight(0x8844ff, 0x220044, 1.2));
 const dl = new THREE.DirectionalLight(0xffffff, 1);
 dl.position.set(5, 12, 5);
 scene.add(dl);
 
-// FISICA
 const world = new CANNON.World({gravity:new CANNON.Vec3(0,-25,0)});
 const mat = new CANNON.Material();
 world.defaultContactMaterial = new CANNON.ContactMaterial(mat, mat, {friction:0.05, restitution:0.85});
 
-// CAMPO RETTANGOLARE 14x9
-const halfX = 7, halfZ = 4.5;
+// CAMPO QUADRATO 14x14 + BORDINO
+const half = 7;
 world.addBody(new CANNON.Body({mass:0, shape:new CANNON.Plane(), material:mat, quaternion:new CANNON.Quaternion().setFromEuler(-Math.PI/2,0,0)}));
-const plane = new THREE.Mesh(new THREE.PlaneGeometry(halfX*2, halfZ*2), new THREE.MeshStandardMaterial({color:0x1a0033, emissive:0x6600aa, emissiveIntensity:0.25, metalness:0.6, roughness:0.2}));
+const plane = new THREE.Mesh(new THREE.PlaneGeometry(half*2, half*2), new THREE.MeshStandardMaterial({color:0x1a0033, emissive:0x6600aa, emissiveIntensity:0.25, metalness:0.6, roughness:0.2}));
 plane.rotation.x = -Math.PI/2;
 scene.add(plane);
 
-// MURI ALTI 5m
-[[0,halfZ,halfX,0.3],[0,-halfZ,halfX,0.3],[halfX,0,0.3,halfZ],[-halfX,0,0.3,halfZ]].forEach(([x,z,w,h])=>{
-  const b = new CANNON.Body({mass:0, shape:new CANNON.Box(new CANNON.Vec3(w,h,2.5)), material:mat});
-  b.position.set(x, 2.5, z);
+// bordino rialzato 0.8m
+[[0,half,half,0.25],[0,-half,half,0.25],[half,0,0.25,half],[-half,0,0.25,half]].forEach(([x,z,w,h])=>{
+  const b = new CANNON.Body({mass:0, shape:new CANNON.Box(new CANNON.Vec3(w,0.4,h)), material:mat});
+  b.position.set(x,0.4,z);
   world.addBody(b);
-  const wall = new THREE.Mesh(new THREE.BoxGeometry(w*2,5,0.6), new THREE.MeshStandardMaterial({color:0x330066, transparent:true, opacity:0.3}));
-  wall.position.set(x,2.5,z);
-  scene.add(wall);
+  const vis = new THREE.Mesh(new THREE.BoxGeometry(w*2,0.8,h*2), new THREE.MeshStandardMaterial({color:0x5500aa, emissive:0xaa00ff, emissiveIntensity:0.4}));
+  vis.position.set(x,0.4,z);
+  scene.add(vis);
+});
+// muri invisibili dietro
+[[0,half+0.6,half+1,0.3],[0,-half-0.6,half+1,0.3],[half+0.6,0,0.3,half+1],[-half-0.6,0,0.3,half+1]].forEach(([x,z,w,h])=>{
+  const b = new CANNON.Body({mass:0, shape:new CANNON.Box(new CANNON.Vec3(w,2.5,h)), material:mat});
+  b.position.set(x,2.5,z); world.addBody(b);
 });
 
 const colors = [0xff3355, 0x3388ff, 0x33ff77, 0xbb44ff];
 const names = ['ROSSA','BLU','VERDE','VIOLA'];
-const powers = ['DASH','STORD','GIGANTE','CLONE'];
-const spawns = [[-5,3],[5,3],[5,-3],[-5,-3]];
+const powers = ['TELEPORT','SPEED','INVIS','CLONE'];
+const spawns = [[-5,5],[5,5],[5,-5],[-5,-5]];
 
 const orbs = [], kills = [0,0,0,0], streak = [0,0,0,0];
 let timer = 0, slowMo = 1;
 
 function make(i,x,z){
   const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.5,28,28), new THREE.MeshStandardMaterial({color:colors[i], emissive:colors[i], emissiveIntensity:0.6, metalness:0.3, roughness:0.2}));
-  mesh.position.set(x,1,z);
-  scene.add(mesh);
+  mesh.position.set(x,1,z); scene.add(mesh);
   const body = new CANNON.Body({mass:2.5, shape:new CANNON.Sphere(0.5), material:mat, linearDamping:0.1});
-  body.position.set(x,1,z);
-  world.addBody(body);
+  body.position.set(x,1,z); world.addBody(body);
   const trail = new THREE.Line(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(new Float32Array(60),3)), new THREE.LineBasicMaterial({color:colors[i], transparent:true, opacity:0.6}));
   scene.add(trail);
-  return {mesh, body, id:i, alive:true, power:i, cd:0, stun:0, giant:false, dash:1+Math.random(), trail, ti:0, ai:Math.random()*0.3};
+  return {mesh, body, id:i, alive:true, power:i, cd:5+Math.random()*2, stun:0, buff:0, invis:0, dash:1+Math.random(), trail, ti:0, ai:Math.random()*0.3};
 }
 spawns.forEach(([x,z],i)=>orbs.push(make(i,x,z)));
 
@@ -101,37 +102,47 @@ function ai(o,dt){
   if(!o.alive || o.stun>0){ o.body.velocity.scale(0.9, o.body.velocity); return; }
   if((o.ai-=dt)>0) return;
   o.ai = 0.2;
-  const enemies = orbs.filter(p=>p.alive && p!==o);
+  o.buff = Math.max(0, o.buff-dt);
+  o.invis = Math.max(0, o.invis-dt);
+  o.mesh.material.opacity = o.invis>0?0.25:1;
+  o.mesh.material.transparent = o.invis>0;
+
+  const enemies = orbs.filter(p=>p.alive && p!==o && p.invis<=0);
   if(!enemies.length) return;
-
   let target = enemies.sort((a,b)=>o.body.position.distanceTo(a.body.position)-o.body.position.distanceTo(b.body.position))[0];
-  if(Math.random()<0.2) target = enemies[1] || target;
-
   const dir = new CANNON.Vec3(target.body.position.x-o.body.position.x, 0, target.body.position.z-o.body.position.z);
   const dist = Math.hypot(dir.x, dir.z);
   if(dist>0.01) dir.scale(1/dist, dir);
 
-  o.dash -= dt;
-  if(o.dash<=0 && dist<6){
-    o.body.velocity.x = dir.x * 16;
-    o.body.velocity.z = dir.z * 16;
-    o.body.velocity.y = 0.5;
-    o.dash = 2.5 + Math.random();
-  } else if(o.dash>1){
-    o.body.velocity.x = dir.x * 6;
-    o.body.velocity.z = dir.z * 6;
+  o.cd = Math.max(0, o.cd-dt);
+  if(o.cd<=0){
+    if(o.power===0){ // TELEPORT
+      const ang = Math.random()*Math.PI*2, r = 2+Math.random()*3;
+      let nx = o.body.position.x + Math.cos(ang)*r;
+      let nz = o.body.position.z + Math.sin(ang)*r;
+      nx = Math.max(-6.5, Math.min(6.5, nx));
+      nz = Math.max(-6.5, Math.min(6.5, nz));
+      o.body.position.set(nx,1,nz); o.body.velocity.set(0,0,0); o.cd=7;
+    } else if(o.power===1){ // SPEED
+      o.buff=3; o.cd=8;
+    } else if(o.power===2){ // INVIS
+      o.invis=4; o.cd=9;
+    } else if(o.power===3){ // CLONE
+      const c=o.mesh.clone(); c.material=c.material.clone(); c.material.opacity=0.4; c.material.transparent=true;
+      c.position.copy(o.mesh.position); scene.add(c); setTimeout(()=>scene.remove(c),5000); o.cd=10;
+    }
   }
 
-  o.cd = Math.max(0, o.cd-dt);
-  o.stun = Math.max(0, o.stun-dt);
-  if(o.cd<=0 && o.power===1 && dist<5){
-    enemies.forEach(p=>{ if(o.body.position.distanceTo(p.body.position)<5) p.stun=0.9; });
-    o.cd = 6;
+  const speed = o.buff>0?10:6, dashPow = o.buff>0?22:16;
+  o.dash -= dt;
+  if(o.dash<=0 && dist<6){
+    o.body.velocity.x = dir.x*dashPow; o.body.velocity.z = dir.z*dashPow; o.body.velocity.y=0.5; o.dash=2.5+Math.random();
+  } else if(o.dash>1){
+    o.body.velocity.x = dir.x*speed; o.body.velocity.z = dir.z*speed;
   }
 }
 
 const clock = new THREE.Clock();
-
 function loop(){
   requestAnimationFrame(loop);
   const dt = Math.min(0.033, clock.getDelta()) * slowMo;
@@ -140,65 +151,40 @@ function loop(){
   orbs.forEach(o=>{
     if(o.alive){
       o.mesh.position.copy(o.body.position);
-      o.trail.geometry.attributes.position.array[o.ti*3] = o.mesh.position.x;
-      o.trail.geometry.attributes.position.array[o.ti*3+1] = o.mesh.position.y+0.05;
-      o.trail.geometry.attributes.position.array[o.ti*3+2] = o.mesh.position.z;
-      o.ti = (o.ti+1)%20;
-      o.trail.geometry.attributes.position.needsUpdate = true;
-      ai(o, dt);
+      o.trail.geometry.attributes.position.array[o.ti*3]=o.mesh.position.x;
+      o.trail.geometry.attributes.position.array[o.ti*3+1]=o.mesh.position.y+0.05;
+      o.trail.geometry.attributes.position.array[o.ti*3+2]=o.mesh.position.z;
+      o.ti=(o.ti+1)%20; o.trail.geometry.attributes.position.needsUpdate=true;
+      ai(o,dt);
     }
   });
 
-  // MORTE SOLO FUORI CAMPO
   orbs.forEach(o=>{
     if(!o.alive) return;
-    const out = Math.abs(o.body.position.x)>halfX+0.5 || Math.abs(o.body.position.z)>halfZ+0.5 || o.body.position.y<-2;
+    const out = Math.abs(o.body.position.x)>half+0.5 || Math.abs(o.body.position.z)>half+0.5 || o.body.position.y<-2;
     if(out){
       const killer = orbs.find(k=>k.alive && k!==o && k.body.position.distanceTo(o.body.position)<2.5);
-      if(killer){ kills[killer.id]++; }
-      o.alive = false;
-      o.mesh.visible = false;
-      o.trail.visible = false;
-      world.removeBody(o.body);
+      if(killer) kills[killer.id]++;
+      o.alive=false; o.mesh.visible=false; o.trail.visible=false; world.removeBody(o.body);
     }
   });
 
   const alive = orbs.filter(o=>o.alive);
-
-  // WIN + RESPAWN
   if(alive.length===1){
-    if(timer===0){
-      const w = alive[0];
-      streak[w.id]++; streak.forEach((v,i)=>{ if(i!==w.id) streak[i]=0; });
-      showWin(w.id); slowMo = 0.3;
-    }
-    timer += dt;
-    if(timer>3){
-      orbs.forEach(o=>{ world.removeBody(o.body); scene.remove(o.mesh); scene.remove(o.trail); });
-      orbs.length = 0;
-      spawns.forEach(([x,z],i)=>orbs.push(make(i,x,z)));
-      timer = 0; slowMo = 1;
-    }
-  } else if(alive.length===0){
-    timer += dt;
-    if(timer>1){
-      orbs.length = 0;
-      spawns.forEach(([x,z],i)=>orbs.push(make(i,x,z)));
-      timer = 0;
-    }
-  } else { timer = 0; slowMo = 1; }
+    if(timer===0){ const w=alive[0]; streak[w.id]++; streak.forEach((v,i)=>{if(i!==w.id)streak[i]=0}); showWin(w.id); slowMo=0.3; }
+    timer+=dt;
+    if(timer>3){ orbs.forEach(o=>{world.removeBody(o.body); scene.remove(o.mesh); scene.remove(o.trail)}); orbs.length=0; spawns.forEach(([x,z],i)=>orbs.push(make(i,x,z))); timer=0; slowMo=1; }
+  } else if(alive.length===0){ timer+=dt; if(timer>1){ orbs.length=0; spawns.forEach(([x,z],i)=>orbs.push(make(i,x,z))); timer=0; } }
+  else { timer=0; slowMo=1; }
 
   camera.lookAt(0,0,0);
-
-  ui.a.textContent = `Vivi: ${alive.length}/4`;
-  ui.k.textContent = `Kill: ${kills.join('-')}`;
-  ui.s.textContent = `Streak: ${streak.join('-')}`;
-  ui.p.innerHTML = alive.map(o=>`#${o.id+1} ${powers[o.power]}`).join('<br>');
-
-  renderer.render(scene, camera);
+  ui.a.textContent=`Vivi: ${alive.length}/4`;
+  ui.k.textContent=`Kill: ${kills.join('-')}`;
+  ui.s.textContent=`Streak: ${streak.join('-')}`;
+  ui.p.innerHTML=alive.map(o=>`#${o.id+1} ${powers[o.power]}${o.buff>0?' ⚡':''}${o.invis>0?' 👻':''}`).join('<br>');
+  renderer.render(scene,camera);
 }
 loop();
-
 addEventListener('resize', ()=>{ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); });
 </script>
 </body>
