@@ -115,10 +115,10 @@ const accent = new THREE.PointLight(0xA855F7, 1.5, 18);
 accent.position.set(-3, 8, 0);
 scene.add(accent);
 
-// ── CAMERA ────────────────────────────────────────────────────────────────────
-const camera = new THREE.PerspectiveCamera(52, innerWidth/innerHeight, 0.1, 200);
-camera.position.set(0, 14, 20);
+// ── CAMERA ────────────────────────────────────
 
+const camera = new THREE.PerspectiveCamera(65, innerWidth/innerHeight, 0.1, 200);
+camera.position.set(0, 10, 16);
 // ── PHYSICS ───────────────────────────────────────────────────────────────────
 const world = new CANNON.World({ gravity: new CANNON.Vec3(0,-9.82,0) });
 world.broadphase = new CANNON.SAPBroadphase(world);
