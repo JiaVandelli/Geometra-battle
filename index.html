@@ -116,7 +116,7 @@ accent.position.set(-3, 8, 0);
 scene.add(accent);
 
 const camera = new THREE.PerspectiveCamera(65, innerWidth/innerHeight, 0.1, 200);
-camera.position.set(0, 14, 20); ───────────────────────────────────────────────────────────────────
+camera.position.set(0, 10, 16); ───────────────────────────────────────────────────────────────────
 const world = new CANNON.World({ gravity: new CANNON.Vec3(0,-9.82,0) });
 world.broadphase = new CANNON.SAPBroadphase(world);
 world.solver.iterations = 12;
@@ -493,7 +493,7 @@ if (p.y < -4 || Math.abs(p.x) > 20 || Math.abs(p.z) > 20) {
 }
 
 // ── CAMERA DIRECTOR ───────────────────────────────────────────────────────────
-const camTargetPos  = new THREE.Vector3(0, 14, 20);
+const camTargetPos  = new THREE.Vector3(0, 10, 16);
 const camLookTarget = new THREE.Vector3(0, 6, 0);
 
 function updateCamera(dt, act, actTime) {
