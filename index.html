@@ -414,11 +414,12 @@ function runAI(dt, mode, actTime) {
   const speed = v.length();
 
   // boundary reset safety
-  if (p.y < -4 || Math.abs(p.x) > 20 || Math.abs(p.z) > 20) {
+if (p.y < -4 || Math.abs(p.x) > 20 || Math.abs(p.z) > 20) {
     const act = getCurrentAct();
     if (act) {
       orboBody.position.set(...act.spawn);
       orboBody.velocity.set(0,0,0);
+      orboBody.angularVelocity.set(0,0,0);
     }
   }
 
