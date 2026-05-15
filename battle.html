@@ -1,621 +1,751 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"/>
-<title>Blackhole Arena</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+<title>BLACKHOLE ARENA — CINEMATIC EDITION</title>
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"}}</script>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
+<script type="importmap">
+{
+  "imports": {
+    "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "cannon-es":"https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"
+  }
+}
+</script>
+
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:'Orbitron',monospace}
-canvas{display:block}
-#ui{position:fixed;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:10}
-#topbar{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:16px 24px;background:linear-gradient(180deg,rgba(0,0,0,.85) 0%,transparent 100%)}
-#logo{font-size:22px;font-weight:900;letter-spacing:4px;color:#fff;text-shadow:0 0 20px #aa00ff,0 0 40px #aa00ff}
-#round-badge{font-size:13px;letter-spacing:2px;color:#bb88ff;background:rgba(100,0,200,.25);border:1px solid rgba(180,80,255,.4);padding:6px 16px;border-radius:20px;font-family:'Share Tech Mono',monospace}
-#scoreboard{position:absolute;top:80px;left:16px;display:flex;flex-direction:column;gap:8px}
-.score-row{display:flex;align-items:center;gap:10px;background:rgba(0,0,0,.65);border-left:3px solid var(--c);border-radius:0 8px 8px 0;padding:8px 14px 8px 12px;backdrop-filter:blur(6px);transition:all .2s;min-width:185px}
-.score-row.dead{opacity:0.3;filter:grayscale(1)}
-.score-dot{width:12px;height:12px;border-radius:50%;background:var(--c);box-shadow:0 0 10px var(--c);flex-shrink:0}
-.score-name{font-size:11px;font-weight:700;letter-spacing:2px;color:#fff}
-.score-k{font-size:14px;font-weight:900;color:var(--c);text-shadow:0 0 8px var(--c);min-width:20px;text-align:right}
-.score-streak{font-size:9px;color:#ffcc00;letter-spacing:1px}
-.score-power{font-size:9px;letter-spacing:1px;font-family:'Share Tech Mono',monospace}
-#killfeed{position:absolute;top:80px;right:16px;display:flex;flex-direction:column;gap:6px;align-items:flex-end}
-.kf-item{font-size:11px;font-family:'Share Tech Mono',monospace;background:rgba(0,0,0,.75);padding:5px 12px;border-radius:6px;border-right:3px solid #fff;transition:opacity 1s}
-#winner{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;opacity:0;transition:opacity .25s;pointer-events:none}
-#winner-name{font-size:60px;font-weight:900;letter-spacing:6px;text-shadow:0 0 30px currentColor,0 0 60px currentColor;line-height:1}
-#winner-sub{font-size:13px;letter-spacing:8px;color:#fff;opacity:0.7;margin-top:8px;font-family:'Share Tech Mono',monospace}
-#power-alert{position:absolute;top:40%;left:50%;transform:translate(-50%,-50%);font-size:26px;font-weight:900;letter-spacing:4px;color:#fff;text-shadow:0 0 20px currentColor;opacity:0;pointer-events:none;transition:opacity .15s;white-space:nowrap;font-family:'Orbitron',monospace}
-#bottombar{position:absolute;bottom:0;left:0;right:0;display:flex;align-items:center;justify-content:center;gap:40px;padding:14px 24px;background:linear-gradient(0deg,rgba(0,0,0,.85) 0%,transparent 100%);font-family:'Share Tech Mono',monospace;font-size:11px;color:#888;letter-spacing:2px}
-.stat-item span{color:#cc88ff}
-#flash{position:absolute;inset:0;opacity:0;pointer-events:none;transition:opacity .05s}
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+}
+
+html,body{
+  width:100%;
+  height:100%;
+  overflow:hidden;
+  background:#000;
+  font-family:'Orbitron',sans-serif;
+}
+
+canvas{
+  display:block;
+}
+
+#ui{
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:10;
+}
+
+#topbar{
+  position:absolute;
+  top:0;
+  left:0;
+  right:0;
+  padding:18px 26px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  background:linear-gradient(180deg,rgba(0,0,0,.9),transparent);
+}
+
+#logo{
+  color:#fff;
+  font-size:24px;
+  font-weight:900;
+  letter-spacing:4px;
+  text-shadow:
+    0 0 10px #bb00ff,
+    0 0 30px #bb00ff,
+    0 0 70px #bb00ff;
+}
+
+#round{
+  color:#d5b2ff;
+  font-family:'Share Tech Mono',monospace;
+  font-size:13px;
+  letter-spacing:3px;
+  border:1px solid rgba(200,120,255,.4);
+  padding:10px 18px;
+  border-radius:999px;
+  background:rgba(50,0,80,.3);
+  backdrop-filter:blur(10px);
+}
+
+#intro{
+  position:absolute;
+  inset:0;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  flex-direction:column;
+  background:radial-gradient(circle at center,rgba(80,0,120,.25),rgba(0,0,0,.92));
+  transition:opacity .8s;
+}
+
+#intro-title{
+  color:#fff;
+  font-size:72px;
+  font-weight:900;
+  letter-spacing:8px;
+  text-shadow:
+    0 0 20px #bb00ff,
+    0 0 60px #bb00ff,
+    0 0 120px #bb00ff;
+}
+
+#intro-sub{
+  margin-top:18px;
+  color:#c9c9c9;
+  letter-spacing:6px;
+  font-size:14px;
+  font-family:'Share Tech Mono',monospace;
+}
+
+#vs{
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  font-size:90px;
+  font-weight:900;
+  color:#fff;
+  opacity:0;
+  transition:.4s;
+  text-shadow:0 0 40px #fff;
+}
+
+#eventText{
+  position:absolute;
+  top:18%;
+  left:50%;
+  transform:translateX(-50%);
+  color:#fff;
+  font-size:30px;
+  font-weight:900;
+  letter-spacing:5px;
+  opacity:0;
+  transition:.2s;
+  text-shadow:0 0 25px currentColor;
+}
+
+#scoreboard{
+  position:absolute;
+  top:100px;
+  left:18px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.row{
+  min-width:200px;
+  padding:10px 14px;
+  border-radius:14px;
+  background:rgba(0,0,0,.55);
+  border:1px solid rgba(255,255,255,.08);
+  backdrop-filter:blur(10px);
+}
+
+.row.dead{
+  opacity:.25;
+  filter:grayscale(1);
+}
+
+.name{
+  font-size:12px;
+  color:#fff;
+  font-weight:700;
+  letter-spacing:2px;
+}
+
+.power{
+  margin-top:5px;
+  font-size:10px;
+  font-family:'Share Tech Mono',monospace;
+}
+
+.kills{
+  margin-top:6px;
+  font-size:18px;
+  font-weight:900;
+}
+
+#winner{
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  text-align:center;
+  opacity:0;
+  transition:opacity .3s;
+}
+
+#winner-name{
+  font-size:82px;
+  font-weight:900;
+  letter-spacing:8px;
+}
+
+#winner-sub{
+  margin-top:14px;
+  color:#fff;
+  opacity:.7;
+  font-family:'Share Tech Mono',monospace;
+  letter-spacing:6px;
+}
+
+#flash{
+  position:absolute;
+  inset:0;
+  opacity:0;
+  transition:.08s;
+}
+
+#bottom{
+  position:absolute;
+  bottom:0;
+  left:0;
+  right:0;
+  display:flex;
+  justify-content:center;
+  gap:40px;
+  padding:14px;
+  background:linear-gradient(0deg,rgba(0,0,0,.9),transparent);
+  color:#999;
+  font-family:'Share Tech Mono',monospace;
+  letter-spacing:2px;
+}
+
+.stat span{
+  color:#fff;
+}
 </style>
 </head>
 <body>
+
 <div id="ui">
+
   <div id="flash"></div>
+
+  <div id="intro">
+    <div id="intro-title">BLACKHOLE ARENA</div>
+    <div id="intro-sub">CINEMATIC EDITION</div>
+  </div>
+
+  <div id="vs">VS</div>
+
   <div id="topbar">
     <div id="logo">⚫ BLACKHOLE ARENA</div>
-    <div id="round-badge">ROUND <span id="round-num">1</span></div>
+    <div id="round">ROUND <span id="roundNum">1</span></div>
   </div>
+
+  <div id="eventText"></div>
+
   <div id="scoreboard"></div>
-  <div id="killfeed"></div>
-  <div id="winner"><div id="winner-name"></div><div id="winner-sub">WINS THIS ROUND</div></div>
-  <div id="power-alert"></div>
-  <div id="bottombar">
-    <div class="stat-item">ALIVE <span id="alive-count">4/4</span></div>
-    <div class="stat-item">ROUND <span id="round-stat">1</span></div>
-    <div class="stat-item">ELIMINATIONS <span id="total-kills">0</span></div>
+
+  <div id="winner">
+    <div id="winner-name"></div>
+    <div id="winner-sub">DOMINATES THE VOID</div>
   </div>
+
+  <div id="bottom">
+    <div class="stat">ALIVE <span id="alive">4/4</span></div>
+    <div class="stat">TOTAL KILLS <span id="kills">0</span></div>
+  </div>
+
 </div>
 
 <script type="module">
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 
-/* ══════════ SCENE ══════════ */
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x020008);
-scene.fog = new THREE.FogExp2(0x0d0022, 0.018);
+scene.fog = new THREE.FogExp2(0x160024,0.022);
 
-const camera = new THREE.PerspectiveCamera(62, innerWidth/innerHeight, 0.1, 200);
-camera.position.set(0, 22, 22);
+const camera = new THREE.PerspectiveCamera(60,innerWidth/innerHeight,.1,200);
+camera.position.set(0,16,22);
 
-const renderer = new THREE.WebGLRenderer({ antialias:true, powerPreference:'high-performance' });
-renderer.setSize(innerWidth, innerHeight);
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const renderer = new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.shadowMap.enabled=true;
 document.body.appendChild(renderer.domElement);
 
-/* ══════════ LIGHTS ══════════ */
-scene.add(new THREE.AmbientLight(0x220044, 1.5));
-scene.add(new THREE.HemisphereLight(0x9955ff, 0x110022, 1.8));
+scene.add(new THREE.AmbientLight(0x441166,1.6));
+scene.add(new THREE.HemisphereLight(0xaa66ff,0x110011,2));
 
-const sun = new THREE.DirectionalLight(0xffffff, 1.4);
-sun.position.set(8,16,8);
-sun.castShadow = true;
-sun.shadow.mapSize.set(1024,1024);
-sun.shadow.camera.left = -22;
-sun.shadow.camera.bottom = -22;
-sun.shadow.camera.right = 22;
-sun.shadow.camera.top = 22;
+const sun = new THREE.DirectionalLight(0xffffff,1.5);
+sun.position.set(10,20,10);
+sun.castShadow=true;
 scene.add(sun);
 
-const fill = new THREE.DirectionalLight(0x4400aa, 0.6);
-fill.position.set(-8, 4, -8);
-scene.add(fill);
+const world = new CANNON.World({
+  gravity:new CANNON.Vec3(0,-28,0)
+});
 
-/* ══════════ STARS ══════════ */
-const starGeo = new THREE.BufferGeometry();
-const starPos = new Float32Array(2000*3);
-for(let i=0;i<starPos.length;i++) starPos[i]=(Math.random()-0.5)*300;
-starGeo.setAttribute('position',new THREE.BufferAttribute(starPos,3));
-const stars = new THREE.Points(starGeo,new THREE.PointsMaterial({color:0xffffff,size:0.25,sizeAttenuation:true,transparent:true,opacity:0.7}));
-scene.add(stars);
+const mat = new CANNON.Material();
+world.defaultContactMaterial = new CANNON.ContactMaterial(mat,mat,{
+  friction:.04,
+  restitution:.8
+});
 
-/* ══════════ PHYSICS ══════════ */
-const world = new CANNON.World({ gravity: new CANNON.Vec3(0,-28,0) });
-const pMat = new CANNON.Material('m');
-world.defaultContactMaterial = new CANNON.ContactMaterial(pMat, pMat, {friction:0.04, restitution:0.75});
+const HALF = 8;
 
-// Arena half-size. Orbs that cross this boundary die.
-const HALF = 7.0;
+const floorBody = new CANNON.Body({
+  mass:0,
+  shape:new CANNON.Plane(),
+  material:mat
+});
 
-// Only floor — NO side walls. Orbs must be able to fly off the rim.
-const floorBody = new CANNON.Body({mass:0, shape:new CANNON.Plane(), material:pMat});
 floorBody.quaternion.setFromEuler(-Math.PI/2,0,0);
 world.addBody(floorBody);
 
-/* ══════════ ARENA VISUALS ══════════ */
-const floorMesh = new THREE.Mesh(
-  new THREE.PlaneGeometry(HALF*2, HALF*2, 16, 16),
-  new THREE.MeshStandardMaterial({color:0x120025, emissive:0x5500aa, emissiveIntensity:0.3, metalness:0.7, roughness:0.15})
+const floor = new THREE.Mesh(
+  new THREE.CircleGeometry(HALF,64),
+  new THREE.MeshStandardMaterial({
+    color:0x180022,
+    emissive:0x7700ff,
+    emissiveIntensity:.25,
+    metalness:.7,
+    roughness:.15
+  })
 );
-floorMesh.rotation.x=-Math.PI/2; floorMesh.receiveShadow=true; scene.add(floorMesh);
 
-const gridHelper = new THREE.GridHelper(HALF*2, 8, 0x6600cc, 0x330066);
-gridHelper.position.y=0.01; scene.add(gridHelper);
+floor.rotation.x = -Math.PI/2;
+floor.receiveShadow=true;
+scene.add(floor);
 
-// Danger zone rim — purely visual, no physics
-const rimMat = new THREE.MeshStandardMaterial({color:0x8800dd, emissive:0xcc00ff, emissiveIntensity:0.9, metalness:0.9, roughness:0.1});
-const RH = 0.22;
-[{pos:[0,RH/2,HALF],ry:0},{pos:[0,RH/2,-HALF],ry:0},{pos:[HALF,RH/2,0],ry:Math.PI/2},{pos:[-HALF,RH/2,0],ry:Math.PI/2}]
-.forEach(({pos,ry})=>{
-  const r=new THREE.Mesh(new THREE.CylinderGeometry(RH,RH,HALF*2,20),rimMat);
-  r.position.set(...pos); r.rotation.y=ry; r.castShadow=true; scene.add(r);
-});
-[[-HALF,HALF],[HALF,HALF],[HALF,-HALF],[-HALF,-HALF]].forEach(([x,z])=>{
-  const s=new THREE.Mesh(new THREE.SphereGeometry(RH,16,16),rimMat);
-  s.position.set(x,RH/2,z); scene.add(s);
-  const pl=new THREE.PointLight(0xaa00ff,1.2,8); pl.position.set(x,1.5,z); scene.add(pl);
-});
+const ring = new THREE.Mesh(
+  new THREE.TorusGeometry(HALF,.15,16,120),
+  new THREE.MeshBasicMaterial({
+    color:0xcc00ff
+  })
+);
 
-// Void indicator strips just beyond the rim (red glow)
-const voidMat = new THREE.MeshBasicMaterial({color:0xff0000, transparent:true, opacity:0.07, side:THREE.DoubleSide});
-[{p:[0,0,HALF+1.5],s:[HALF*2+4,3]},{p:[0,0,-HALF-1.5],s:[HALF*2+4,3]},{p:[HALF+1.5,0,0],s:[3,HALF*2+4]},{p:[-HALF-1.5,0,0],s:[3,HALF*2+4]}]
-.forEach(({p,s})=>{
-  const m=new THREE.Mesh(new THREE.PlaneGeometry(...s), voidMat);
-  m.rotation.x=-Math.PI/2; m.position.set(...p); scene.add(m);
-});
+ring.rotation.x=Math.PI/2;
+scene.add(ring);
 
-const vortex=new THREE.Mesh(new THREE.TorusGeometry(1.2,0.05,12,60),new THREE.MeshBasicMaterial({color:0xcc44ff,transparent:true,opacity:0.6}));
-vortex.rotation.x=Math.PI/2; scene.add(vortex);
-const vortex2=new THREE.Mesh(new THREE.TorusGeometry(2.2,0.03,8,60),new THREE.MeshBasicMaterial({color:0x8800aa,transparent:true,opacity:0.3}));
-vortex2.rotation.x=Math.PI/2; scene.add(vortex2);
+const starsGeo = new THREE.BufferGeometry();
+const starPos = new Float32Array(4000*3);
 
-/* ══════════ CONFIG ══════════ */
-const ORB_COLORS = [0xff2244, 0x2266ff, 0x22ff66, 0xdd44ff];
-const ORB_EMITS  = [0xff0033, 0x0044ff, 0x00ff44, 0xcc22ff];
-const ORB_NAMES  = ['ROSSO','BLU','VERDE','VIOLA'];
-const ORB_SPAWNS = [[-4,4],[4,-4],[-4,-4],[4,4]]; // spawn closer to center
-const POWER_CFG  = [
-  {name:'ESPLOSIONE', emoji:'💥', cd:4,  color:'#ff4466'},
-  {name:'MINION',     emoji:'🤖', cd:3,  color:'#4488ff'},
-  {name:'GHOST RUSH', emoji:'👻', cd:5,  color:'#44ff88'},
-  {name:'BUCO NERO',  emoji:'🕳️', cd:7,  color:'#cc44ff'},
+for(let i=0;i<starPos.length;i++){
+  starPos[i]=(Math.random()-.5)*400;
+}
+
+starsGeo.setAttribute('position',new THREE.BufferAttribute(starPos,3));
+
+const stars = new THREE.Points(
+  starsGeo,
+  new THREE.PointsMaterial({
+    color:0xffffff,
+    size:.35,
+    transparent:true,
+    opacity:.8
+  })
+);
+
+scene.add(stars);
+
+const ORBS = [
+  {name:'ROSSO',color:0xff3355,power:'EXPLOSION'},
+  {name:'BLU',color:0x3388ff,power:'MINION'},
+  {name:'VERDE',color:0x33ff88,power:'GHOST'},
+  {name:'VIOLA',color:0xdd44ff,power:'BLACKHOLE'}
 ];
 
-let round=1, winnerDeclared=false, slowMo=1, roundTimer=0;
-const totalKills=[0,0,0,0], totalStreak=[0,0,0,0];
-let orbs=[];
-const effects=[];
-const minions=[];
+const orbs=[];
 const particles=[];
+const totalKills=[0,0,0,0];
 
-function hexStr(c){return '#'+c.toString(16).padStart(6,'0')}
+function flash(color='#fff',v=.7){
+  const f=document.getElementById('flash');
+  f.style.background=color;
+  f.style.opacity=v;
+  setTimeout(()=>f.style.opacity='0',90);
+}
 
-/* ══════════ PARTICLES ══════════ */
-function burst(pos,color,count=20,force=8){
+function showEvent(text,color='#fff'){
+  const el=document.getElementById('eventText');
+  el.innerHTML=text;
+  el.style.color=color;
+  el.style.opacity='1';
+  setTimeout(()=>el.style.opacity='0',1500);
+}
+
+function burst(pos,color,count=35){
   for(let i=0;i<count;i++){
-    const m=new THREE.Mesh(
-      new THREE.SphereGeometry(0.06+Math.random()*0.1,6,6),
-      new THREE.MeshBasicMaterial({color,transparent:true,opacity:1})
+
+    const mesh = new THREE.Mesh(
+      new THREE.SphereGeometry(.07+Math.random()*.12,6,6),
+      new THREE.MeshBasicMaterial({
+        color,
+        transparent:true,
+        opacity:1
+      })
     );
-    const a=Math.random()*Math.PI*2, sp=force*0.5+Math.random()*force;
-    m.position.copy(pos); scene.add(m);
-    particles.push({mesh:m, vx:Math.cos(a)*sp, vy:1.5+Math.random()*4, vz:Math.sin(a)*sp, life:1, decay:0.7+Math.random()*0.5});
-  }
-  const ring=new THREE.Mesh(new THREE.RingGeometry(0.1,0.9,24),new THREE.MeshBasicMaterial({color,transparent:true,opacity:0.9,side:THREE.DoubleSide}));
-  ring.position.copy(pos); ring.rotation.x=-Math.PI/2; scene.add(ring);
-  particles.push({mesh:ring, isRing:true, vx:0, vy:0, vz:0, life:1, decay:2.5});
-}
-function updateParticles(dt){
-  for(let i=particles.length-1;i>=0;i--){
-    const p=particles[i]; p.life-=p.decay*dt;
-    if(p.life<=0){scene.remove(p.mesh);particles.splice(i,1);continue;}
-    p.mesh.material.opacity=p.life*(p.isRing?0.9:0.85);
-    if(p.isRing){const s=1+(1-p.life)*7;p.mesh.scale.set(s,s,1);}
-    else{p.mesh.position.x+=p.vx*dt;p.mesh.position.y+=p.vy*dt;p.mesh.position.z+=p.vz*dt;p.vy-=12*dt;}
+
+    mesh.position.copy(pos);
+    scene.add(mesh);
+
+    particles.push({
+      mesh,
+      vx:(Math.random()-.5)*12,
+      vy:Math.random()*8,
+      vz:(Math.random()-.5)*12,
+      life:1
+    });
   }
 }
 
-/* ══════════ UI HELPERS ══════════ */
-const alertEl=document.getElementById('power-alert');
-let alertTimer=0;
-function showAlert(text,color,dur=1.5){
-  alertEl.textContent=text; alertEl.style.color=color;
-  alertEl.style.textShadow=`0 0 20px ${color}`; alertEl.style.opacity='1'; alertTimer=dur;
-}
-const flashEl=document.getElementById('flash');
-function doFlash(color='#ffffff',v=0.7){
-  flashEl.style.background=color; flashEl.style.opacity=v+'';
-  setTimeout(()=>flashEl.style.opacity='0',110);
-}
-const kfEl=document.getElementById('killfeed');
-function addKillFeed(kName,kCol,vName,vCol){
-  const d=document.createElement('div');
-  d.className='kf-item'; d.style.borderColor=hexStr(kCol);
-  d.innerHTML=`<span style="color:${hexStr(kCol)}">${kName}</span> <span style="color:#555">⊗</span> <span style="color:${hexStr(vCol)}">${vName}</span>`;
-  kfEl.appendChild(d);
-  setTimeout(()=>{d.style.opacity='0';setTimeout(()=>d.remove(),1100)},3200);
-  while(kfEl.children.length>5) kfEl.removeChild(kfEl.firstChild);
-}
-const sbEl=document.getElementById('scoreboard');
-function updateScoreboard(){
-  sbEl.innerHTML='';
-  orbs.forEach(o=>{
-    const cfg=POWER_CFG[o.id];
-    const row=document.createElement('div');
-    row.className='score-row'+(o.alive?'':' dead');
-    row.style.setProperty('--c',hexStr(ORB_COLORS[o.id]));
-    const cdPct=o.alive?Math.max(0,1-o.cd/cfg.cd):0;
-    const bar='█'.repeat(Math.round(cdPct*5))+'░'.repeat(5-Math.round(cdPct*5));
-    const str=totalStreak[o.id]>1?`<div class="score-streak">🔥×${totalStreak[o.id]}</div>`:'';
-    row.innerHTML=`<div class="score-dot"></div>
-      <div style="flex:1">
-        <div class="score-name">${cfg.emoji} ${o.name}</div>
-        <div class="score-power" style="color:${cfg.color}">${cfg.name} ${bar}</div>${str}
-      </div>
-      <div class="score-k">${totalKills[o.id]}</div>`;
-    sbEl.appendChild(row);
+function makeOrb(i,x,z){
+
+  const cfg = ORBS[i];
+
+  const mesh = new THREE.Mesh(
+    new THREE.SphereGeometry(.55,32,32),
+    new THREE.MeshStandardMaterial({
+      color:cfg.color,
+      emissive:cfg.color,
+      emissiveIntensity:1,
+      roughness:.18,
+      metalness:.2
+    })
+  );
+
+  mesh.castShadow=true;
+  scene.add(mesh);
+
+  mesh.add(new THREE.PointLight(cfg.color,2,6));
+
+  const body = new CANNON.Body({
+    mass:3,
+    shape:new CANNON.Sphere(.55),
+    material:mat,
+    linearDamping:.05
   });
-}
 
-/* ══════════ MAKE ORB ══════════ */
-function makeOrb(i){
-  const [sx,sz]=ORB_SPAWNS[i];
-  const meshMat=new THREE.MeshStandardMaterial({color:ORB_COLORS[i],emissive:ORB_EMITS[i],emissiveIntensity:0.8,metalness:0.2,roughness:0.15});
-  const mesh=new THREE.Mesh(new THREE.SphereGeometry(0.5,32,32),meshMat);
-  mesh.castShadow=true; scene.add(mesh);
-  mesh.add(new THREE.Mesh(new THREE.SphereGeometry(0.72,16,16),new THREE.MeshBasicMaterial({color:ORB_COLORS[i],transparent:true,opacity:0.12,side:THREE.BackSide})));
-  mesh.add(Object.assign(new THREE.PointLight(ORB_COLORS[i],1.2,5)));
-
-  // Name label
-  const cv=document.createElement('canvas'); cv.width=256; cv.height=64;
-  const ctx=cv.getContext('2d'); ctx.font='bold 34px Orbitron,monospace';
-  ctx.fillStyle=hexStr(ORB_COLORS[i]); ctx.textAlign='center'; ctx.fillText(ORB_NAMES[i],128,46);
-  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),transparent:true,depthTest:false}));
-  sp.scale.set(2.5,0.6,1); sp.position.y=1.1; mesh.add(sp);
-
-  // Trail
-  const TLEN=30, trailGeo=new THREE.BufferGeometry();
-  trailGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(TLEN*3),3));
-  const trailMesh=new THREE.Line(trailGeo,new THREE.LineBasicMaterial({color:ORB_COLORS[i],transparent:true,opacity:0.55}));
-  scene.add(trailMesh);
-
-  const body=new CANNON.Body({mass:2.8, shape:new CANNON.Sphere(0.5), material:pMat, linearDamping:0.06});
-  body.position.set(sx,1,sz);
-  body.velocity.set((Math.random()-0.5)*4,0,(Math.random()-0.5)*4);
+  body.position.set(x,1,z);
   world.addBody(body);
 
   return {
-    mesh, body, trailMesh, id:i, alive:true,
-    cd: POWER_CFG[i].cd*(0.3+Math.random()*0.5), // staggered start
-    buff:0, invis:0, stun:0,
-    dash:0.8+Math.random()*1.2,
-    trailPts:Array(TLEN).fill(null).map(()=>new THREE.Vector3()),
-    trailIdx:0,
-    ai_t:Math.random()*0.15,
-    name:ORB_NAMES[i], kills:0,
+    id:i,
+    mesh,
+    body,
+    alive:true,
+    cooldown:2+Math.random()*3,
+    dash:1,
+    kills:0,
+    personality:Math.random()
   };
 }
 
-/* ══════════ POWER: ROSSO — ESPLOSIONE ══════════ */
+function spawn(){
+  orbs.length=0;
+
+  orbs.push(makeOrb(0,-4,4));
+  orbs.push(makeOrb(1,4,-4));
+  orbs.push(makeOrb(2,-4,-4));
+  orbs.push(makeOrb(3,4,4));
+}
+
+spawn();
+
+function updateBoard(){
+
+  const sb = document.getElementById('scoreboard');
+  sb.innerHTML='';
+
+  orbs.forEach(o=>{
+
+    const cfg=ORBS[o.id];
+
+    const row=document.createElement('div');
+    row.className='row'+(!o.alive?' dead':'');
+
+    row.innerHTML=`
+      <div class="name" style="color:${'#'+cfg.color.toString(16)}">
+        ${cfg.name}
+      </div>
+
+      <div class="power">
+        ${cfg.power}
+      </div>
+
+      <div class="kills">
+        ${totalKills[o.id]}
+      </div>
+    `;
+
+    sb.appendChild(row);
+  });
+}
+
+function cameraShake(intensity=.2){
+  camera.position.x += (Math.random()-.5)*intensity;
+  camera.position.y += (Math.random()-.5)*intensity;
+  camera.position.z += (Math.random()-.5)*intensity;
+}
+
 function powerExplosion(o){
-  showAlert('💥  ESPLOSIONE!', hexStr(ORB_COLORS[0]));
-  doFlash('#ff2244', 0.5);
-  burst(o.body.position.clone(), ORB_COLORS[0], 40, 12);
 
-  // Shockwave ring
-  const ring=new THREE.Mesh(
-    new THREE.TorusGeometry(0.3,0.14,8,40),
-    new THREE.MeshBasicMaterial({color:0xff3300,transparent:true,opacity:0.95})
-  );
-  ring.rotation.x=Math.PI/2; ring.position.copy(o.body.position); scene.add(ring);
-  effects.push({type:'shockwave', mesh:ring, life:0.45});
+  showEvent('💥 EXPLOSION','#ff3355');
+  flash('#ff3355',.6);
+  cameraShake(.7);
 
-  // Radial impulse — strong horizontal, minimal Y so they FLY OFF not jump
-  orbs.forEach(p=>{
-    if(!p.alive||p===o) return;
-    const dx=p.body.position.x-o.body.position.x;
-    const dz=p.body.position.z-o.body.position.z;
-    let d=Math.hypot(dx,dz); if(d<0.1) d=0.1;
-    // Scale force with distance: closer = harder push
-    const hForce=Math.min(25, 18/d);
-    p.body.velocity.x+=(dx/d)*hForce;
-    p.body.velocity.z+=(dz/d)*hForce;
-    p.body.velocity.y+=0.5+Math.random()*1; // minimal upward — they should slide off, not bounce
+  burst(o.mesh.position,o.mesh.material.color,60);
+
+  orbs.forEach(t=>{
+
+    if(!t.alive||t===o)return;
+
+    const dx=t.body.position.x-o.body.position.x;
+    const dz=t.body.position.z-o.body.position.z;
+
+    const d=Math.max(.2,Math.hypot(dx,dz));
+
+    t.body.velocity.x += (dx/d)*22;
+    t.body.velocity.z += (dz/d)*22;
   });
-  minions.forEach(mn=>{
-    if(!mn.alive) return;
-    const dx=mn.body.position.x-o.body.position.x;
-    const dz=mn.body.position.z-o.body.position.z;
-    let d=Math.hypot(dx,dz); if(d<0.1) d=0.1;
-    mn.body.velocity.x+=(dx/d)*20;
-    mn.body.velocity.z+=(dz/d)*20;
-  });
-  o.cd=POWER_CFG[0].cd;
 }
 
-/* ══════════ POWER: BLU — MINION ══════════ */
-function powerMinion(o){
-  showAlert('🤖  MINION!', hexStr(ORB_COLORS[1]));
-  // Cap minions so they don't flood the arena
-  const myMinions=minions.filter(m=>m.alive&&m.owner===o);
-  if(myMinions.length<3) spawnMinion(o);
-  o.cd=POWER_CFG[1].cd;
-}
-function spawnMinion(owner){
-  const mesh=new THREE.Mesh(
-    new THREE.SphereGeometry(0.28,16,16),
-    new THREE.MeshStandardMaterial({color:ORB_COLORS[owner.id],emissive:ORB_EMITS[owner.id],emissiveIntensity:1.1,metalness:0.3,roughness:0.2})
+function powerBlackhole(o){
+
+  showEvent('🕳️ BLACKHOLE','#dd44ff');
+  flash('#dd44ff',.45);
+
+  const pos = o.body.position.clone();
+
+  const blackhole = new THREE.Mesh(
+    new THREE.SphereGeometry(.45,32,32),
+    new THREE.MeshBasicMaterial({color:0x000000})
   );
-  scene.add(mesh);
-  const body=new CANNON.Body({mass:0.8, shape:new CANNON.Sphere(0.28), material:pMat, linearDamping:0.1});
-  const a=Math.random()*Math.PI*2;
-  body.position.set(owner.body.position.x+Math.cos(a)*1.3, 1, owner.body.position.z+Math.sin(a)*1.3);
-  world.addBody(body);
-  const tgeo=new THREE.BufferGeometry();
-  tgeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(15*3),3));
-  const trailMesh=new THREE.Line(tgeo,new THREE.LineBasicMaterial({color:ORB_COLORS[owner.id],transparent:true,opacity:0.4}));
-  scene.add(trailMesh);
-  minions.push({mesh,body,trailMesh,owner,alive:true,ai_t:0,trailIdx:0,trailPts:Array(15).fill(null).map(()=>new THREE.Vector3()),life:18});
-  burst(body.position.clone(),ORB_COLORS[owner.id],10,4);
-}
 
-/* ══════════ POWER: VERDE — GHOST RUSH ══════════ */
-function powerGhostRush(o){
-  showAlert('👻  GHOST RUSH!', hexStr(ORB_COLORS[2]));
-  o.invis=4; o.buff=4;
-  o.cd=POWER_CFG[2].cd;
-}
+  blackhole.position.copy(pos);
+  scene.add(blackhole);
 
-/* ══════════ POWER: VIOLA — BUCO NERO ══════════ */
-function powerBlackHole(o){
-  showAlert('🕳️  BUCO NERO!', hexStr(ORB_COLORS[3]));
-  doFlash('#cc00ff', 0.38);
+  let timer=2.4;
 
-  const bhMesh=new THREE.Mesh(new THREE.SphereGeometry(0.45,24,24),new THREE.MeshBasicMaterial({color:0x000000}));
-  // Spawn black hole at center of arena (not at Viola) for max effect
-  const bhPos=new CANNON.Vec3(
-    o.body.position.x*0.3, // biased toward center
-    1.5,
-    o.body.position.z*0.3
-  );
-  bhMesh.position.set(bhPos.x, bhPos.y, bhPos.z); scene.add(bhMesh);
+  const pull = ()=>{
 
-  const r1=new THREE.Mesh(new THREE.TorusGeometry(1.0,0.09,8,40),new THREE.MeshBasicMaterial({color:0xcc44ff,transparent:true,opacity:0.85}));
-  r1.rotation.x=Math.PI/2; bhMesh.add(r1);
-  const r2=new THREE.Mesh(new THREE.TorusGeometry(1.7,0.05,8,40),new THREE.MeshBasicMaterial({color:0x8800aa,transparent:true,opacity:0.5}));
-  r2.rotation.x=Math.PI/2; bhMesh.add(r2);
-  bhMesh.add(Object.assign(new THREE.PointLight(0xcc00ff,3.5,10)));
+    timer-=0.016;
 
-  effects.push({type:'blackhole', mesh:bhMesh, life:2.2, pos:bhPos, r1, r2});
-  o.cd=POWER_CFG[3].cd;
-}
+    blackhole.rotation.y += .1;
 
-/* ══════════ EFFECTS UPDATE ══════════ */
-function updateEffects(dt){
-  for(let i=effects.length-1;i>=0;i--){
-    const e=effects[i]; e.life-=dt;
-    if(e.life<=0){scene.remove(e.mesh);effects.splice(i,1);continue;}
+    orbs.forEach(t=>{
 
-    if(e.type==='shockwave'){
-      const s=1+(0.45-e.life)*42;
-      e.mesh.scale.set(s,s,s);
-      e.mesh.material.opacity=e.life*2;
+      if(!t.alive)return;
+
+      const dx=pos.x-t.body.position.x;
+      const dz=pos.z-t.body.position.z;
+
+      const d=Math.max(.5,Math.hypot(dx,dz));
+
+      t.body.velocity.x += dx/d*.45;
+      t.body.velocity.z += dz/d*.45;
+    });
+
+    if(timer>0){
+      requestAnimationFrame(pull);
+    }else{
+      scene.remove(blackhole);
     }
+  };
 
-    if(e.type==='blackhole'){
-      e.mesh.rotation.y+=dt*3.5;
-      e.r1.rotation.z+=dt*5; e.r2.rotation.z-=dt*3;
-
-      // Pull — moderate force so they converge but don't get stuck
-      // Crucially: NO upward force, and cap horizontal so they still eventually fly out
-      [...orbs,...minions].forEach(p=>{
-        if(!p.alive) return;
-        const dx=e.pos.x-p.body.position.x;
-        const dz=e.pos.z-p.body.position.z;
-        const dist=Math.max(0.6, Math.hypot(dx,dz));
-        // Gravity = 12/dist (linear, not squared) — weaker at distance, reasonable up close
-        const f=(12/dist)*dt;
-        p.body.velocity.x+=dx/dist*f*28;
-        p.body.velocity.z+=dz/dist*f*28;
-        // No Y pull — they stay on the floor, collide, then the chaos sends them off
-      });
-    }
-  }
+  pull();
 }
 
-/* ══════════ MINION AI ══════════ */
-function updateMinions(dt){
-  for(let i=minions.length-1;i>=0;i--){
-    const mn=minions[i];
-    if(!mn.alive) continue;
-    mn.life-=dt;
-    const p=mn.body.position;
-    // Eliminate minion if it leaves the arena (same threshold as orbs)
-    if(mn.life<=0||Math.abs(p.x)>HALF||Math.abs(p.z)>HALF||p.y<-0.8){
-      mn.alive=false; scene.remove(mn.mesh); scene.remove(mn.trailMesh);
-      try{world.removeBody(mn.body)}catch(e){}
-      continue;
-    }
-    mn.mesh.position.copy(mn.body.position);
-    mn.mesh.rotation.y+=dt*4;
+function ai(o,dt){
 
-    mn.trailPts[mn.trailIdx].copy(mn.body.position); mn.trailPts[mn.trailIdx].y+=0.03;
-    mn.trailIdx=(mn.trailIdx+1)%mn.trailPts.length;
-    const arr=mn.trailMesh.geometry.attributes.position.array;
-    for(let t=0;t<mn.trailPts.length;t++){arr[t*3]=mn.trailPts[t].x;arr[t*3+1]=mn.trailPts[t].y;arr[t*3+2]=mn.trailPts[t].z;}
-    mn.trailMesh.geometry.attributes.position.needsUpdate=true;
+  if(!o.alive)return;
 
-    mn.ai_t-=dt; if(mn.ai_t>0) continue;
-    mn.ai_t=0.14+Math.random()*0.08;
-
-    const enemies=orbs.filter(o=>o.alive&&o!==mn.owner&&o.invis<=0);
-    if(!enemies.length){mn.body.velocity.scale(0.8,mn.body.velocity);continue;}
-    let tgt=enemies[0], best=mn.body.position.distanceTo(enemies[0].body.position);
-    enemies.forEach(e=>{const d=mn.body.position.distanceTo(e.body.position);if(d<best){best=d;tgt=e;}});
-
-    const dx=tgt.body.position.x-mn.body.position.x;
-    const dz=tgt.body.position.z-mn.body.position.z;
-    let dist=Math.hypot(dx,dz); if(dist<0.001) dist=0.001;
-
-    // Minion also avoids edge
-    const edgeFactor=Math.max(0,(Math.max(Math.abs(p.x),Math.abs(p.z))-4.5)/(HALF-4.5));
-    const cx=-p.x, cz2=-p.z, cDist=Math.hypot(cx,cz2)||1;
-    mn.body.velocity.x=((dx/dist)*(1-edgeFactor)+(cx/cDist)*edgeFactor)*9;
-    mn.body.velocity.z=((dz/dist)*(1-edgeFactor)+(cz2/cDist)*edgeFactor)*9;
-  }
-}
-
-/* ══════════ ORB AI ══════════ */
-function aiStep(o, dt){
-  if(!o.alive||o.stun>0){o.body.velocity.scale(0.88,o.body.velocity);return;}
-  o.ai_t-=dt; if(o.ai_t>0) return;
-  o.ai_t=0.10+Math.random()*0.08;
-
-  o.buff=Math.max(0,o.buff-dt);
-  o.invis=Math.max(0,o.invis-dt);
-  o.mesh.material.opacity=o.invis>0?0.18:1;
-  o.mesh.material.transparent=o.invis>0;
-  o.cd=Math.max(0,o.cd-dt);
-
-  if(o.cd<=0){
-    if(o.id===0) powerExplosion(o);
-    else if(o.id===1) powerMinion(o);
-    else if(o.id===2) powerGhostRush(o);
-    else if(o.id===3) powerBlackHole(o);
-  }
-
-  const enemies=orbs.filter(p=>p.alive&&p!==o&&p.invis<=0);
-  if(!enemies.length){o.body.velocity.scale(0.85,o.body.velocity);return;}
-
-  let tgt=enemies[0], best=o.body.position.distanceTo(enemies[0].body.position);
-  enemies.forEach(e=>{const d=o.body.position.distanceTo(e.body.position);if(d<best){best=d;tgt=e;}});
-
-  const dx=tgt.body.position.x-o.body.position.x;
-  const dz=tgt.body.position.z-o.body.position.z;
-  let dist=Math.hypot(dx,dz); if(!isFinite(dist)||dist<0.001) dist=0.001;
-  const dirX=dx/dist, dirZ=dz/dist;
-
-  // Edge avoidance — kick in from 4.0 (well before the 7.0 rim)
-  const px=o.body.position.x, pz=o.body.position.z;
-  const edgeD=Math.max(Math.abs(px),Math.abs(pz));
-  const edge=Math.max(0,(edgeD-4.0)/(HALF-4.0));  // 0 at center, 1 at rim
-  const cx=-px, cz=-pz, cD=Math.hypot(cx,cz)||1;
-  const mx=dirX*(1-edge)+(cx/cD)*edge;
-  const mz=dirZ*(1-edge)+(cz/cD)*edge;
-
-  // Speed — balanced, not too fast so physics bounces matter
-  const speed=o.buff>0?11:6;
-  const dashPow=o.buff>0?20:15;
+  o.cooldown-=dt;
   o.dash-=dt;
 
-  // Only dash if NOT near the edge (prevents self-ejection)
-  const nearEdge=edgeD>5.5;
-  if(o.dash<=0&&dist<7&&!nearEdge){
-    o.body.velocity.x=dirX*dashPow;
-    o.body.velocity.z=dirZ*dashPow;
-    o.body.velocity.y=0.3; // almost no Y on dash
-    o.dash=1.4+Math.random()*1.0;
-  } else {
-    const w=(Math.random()-0.5)*0.5;
-    o.body.velocity.x=(mx+w*0.2)*speed;
-    o.body.velocity.z=(mz+w*0.2)*speed;
+  const enemies = orbs.filter(t=>t.alive&&t!==o);
+
+  if(!enemies.length)return;
+
+  let target=enemies[0];
+  let best=999;
+
+  enemies.forEach(e=>{
+    const d=o.body.position.distanceTo(e.body.position);
+    if(d<best){
+      best=d;
+      target=e;
+    }
+  });
+
+  const dx=target.body.position.x-o.body.position.x;
+  const dz=target.body.position.z-o.body.position.z;
+
+  const dist=Math.max(.001,Math.hypot(dx,dz));
+
+  const speed = 7 + o.personality*4;
+
+  o.body.velocity.x += dx/dist*speed*dt*8;
+  o.body.velocity.z += dz/dist*speed*dt*8;
+
+  const edge=Math.max(Math.abs(o.body.position.x),Math.abs(o.body.position.z));
+
+  if(edge>5.5){
+    o.body.velocity.x += -o.body.position.x*.2;
+    o.body.velocity.z += -o.body.position.z*.2;
+  }
+
+  if(o.cooldown<=0){
+
+    if(o.id===0) powerExplosion(o);
+    if(o.id===3) powerBlackhole(o);
+
+    o.cooldown=3+Math.random()*3;
   }
 }
 
-/* ══════════ WINNER ══════════ */
+function eliminate(o){
+
+  o.alive=false;
+
+  burst(o.mesh.position,o.mesh.material.color,70);
+  flash('#ffffff',.4);
+  cameraShake(1.2);
+
+  scene.remove(o.mesh);
+
+  try{
+    world.removeBody(o.body);
+  }catch(e){}
+}
+
+let round=1;
+let winner=false;
+let slowmo=1;
+
 const winnerEl=document.getElementById('winner');
-const winnerNameEl=document.getElementById('winner-name');
-function showWinner(id){
-  winnerNameEl.textContent=ORB_NAMES[id]+' VINCE!';
-  winnerNameEl.style.color=hexStr(ORB_COLORS[id]);
-  winnerEl.style.opacity='1';
-  doFlash(hexStr(ORB_COLORS[id]),0.6);
-  slowMo=0.18;
-}
+const winnerName=document.getElementById('winner-name');
 
-/* ══════════ SPAWN ROUND ══════════ */
-function spawnRound(){
-  orbs.forEach(o=>{try{world.removeBody(o.body)}catch(e){};scene.remove(o.mesh);scene.remove(o.trailMesh);});
-  minions.forEach(mn=>{try{world.removeBody(mn.body)}catch(e){};scene.remove(mn.mesh);scene.remove(mn.trailMesh);});
-  effects.forEach(e=>scene.remove(e.mesh));
-  particles.forEach(p=>scene.remove(p.mesh));
-  orbs.length=0; minions.length=0; effects.length=0; particles.length=0;
-  winnerEl.style.opacity='0';
-  winnerDeclared=false; slowMo=1; roundTimer=0;
-  orbs=ORB_SPAWNS.map((_,i)=>makeOrb(i));
-  document.getElementById('round-num').textContent=round;
-  document.getElementById('round-stat').textContent=round;
-  updateScoreboard();
-}
+const clock = new THREE.Clock();
 
-/* ══════════ MAIN LOOP ══════════ */
-const clock=new THREE.Clock();
-let camAngle=0, sbTimer=0;
-spawnRound();
+setTimeout(()=>{
+  document.getElementById('intro').style.opacity='0';
+  setTimeout(()=>{
+    document.getElementById('intro').style.display='none';
+  },1000);
+},2600);
 
 function loop(){
+
   requestAnimationFrame(loop);
-  const rawDt=Math.min(0.033,clock.getDelta());
-  const dt=rawDt*slowMo;
 
-  if(alertTimer>0){alertTimer-=rawDt; if(alertTimer<=0) alertEl.style.opacity='0';}
+  const dt=Math.min(.033,clock.getDelta())*slowmo;
 
-  stars.rotation.y+=0.00015;
-  vortex.rotation.z+=0.55*dt*(slowMo<1?slowMo*4:1);
-  vortex2.rotation.z-=0.28*dt;
+  world.step(1/60,dt,3);
 
-  // Orbiting camera
-  camAngle+=0.004*rawDt*60;
-  const camR=24+Math.sin(camAngle*0.3)*2;
-  camera.position.x=Math.sin(camAngle)*camR;
-  camera.position.z=Math.cos(camAngle)*camR;
-  camera.position.y=17+Math.sin(camAngle*0.4)*4;
+  stars.rotation.y += .0002;
+  ring.rotation.z += .001;
+
+  const t=performance.now()*.0002;
+
+  camera.position.x = Math.sin(t)*24;
+  camera.position.z = Math.cos(t)*24;
+  camera.position.y = 14 + Math.sin(t*2)*2;
   camera.lookAt(0,1,0);
 
-  // Apply special effects BEFORE world.step so forces integrate correctly
-  updateEffects(dt);
+  particles.forEach((p,i)=>{
 
-  world.step(1/60, dt, 3);
-  updateParticles(rawDt);
-  updateMinions(dt);
+    p.life -= dt;
 
-  // Update orbs
-  orbs.forEach(o=>{
-    if(!o.alive) return;
-    o.mesh.position.copy(o.body.position);
-    o.mesh.rotation.y+=dt*2.5;
-    o.trailPts[o.trailIdx].copy(o.body.position); o.trailPts[o.trailIdx].y+=0.05;
-    o.trailIdx=(o.trailIdx+1)%o.trailPts.length;
-    const arr=o.trailMesh.geometry.attributes.position.array;
-    for(let t=0;t<o.trailPts.length;t++){arr[t*3]=o.trailPts[t].x;arr[t*3+1]=o.trailPts[t].y;arr[t*3+2]=o.trailPts[t].z;}
-    o.trailMesh.geometry.attributes.position.needsUpdate=true;
-    aiStep(o,dt);
-  });
+    p.mesh.position.x += p.vx*dt;
+    p.mesh.position.y += p.vy*dt;
+    p.mesh.position.z += p.vz*dt;
 
-  /* ── ELIMINATION ──
-     Orb dies the moment it crosses the rim (HALF) or falls below the floor.
-     No invisible walls means this is the ONLY thing stopping them. */
-  const toKill=[];
-  orbs.forEach(o=>{
-    if(!o.alive) return;
-    const p=o.body.position;
-    if(Math.abs(p.x)>HALF||Math.abs(p.z)>HALF||p.y<-0.8) toKill.push(o);
-  });
-  toKill.forEach(victim=>{
-    burst(victim.body.position.clone(),ORB_COLORS[victim.id],32,10);
-    victim.alive=false; victim.mesh.visible=false; victim.trailMesh.visible=false;
-    try{world.removeBody(victim.body)}catch(e){}
-    // Credit the closest alive orb
-    let killer=null, minD=9;
-    orbs.forEach(k=>{if(!k.alive||k===victim)return;const d=k.body.position.distanceTo(victim.body.position);if(d<minD){minD=d;killer=k;}});
-    if(killer){killer.kills++;totalKills[killer.id]++;addKillFeed(killer.name,ORB_COLORS[killer.id],victim.name,ORB_COLORS[victim.id]);}
-    document.getElementById('total-kills').textContent=totalKills.reduce((a,b)=>a+b,0);
-  });
+    p.vy -= 12*dt;
 
-  // Round state
-  const alive=orbs.filter(o=>o.alive);
-  document.getElementById('alive-count').textContent=`${alive.length}/4`;
+    p.mesh.material.opacity = p.life;
 
-  if(!winnerDeclared){
-    if(alive.length===1){
-      winnerDeclared=true;
-      const w=alive[0];
-      totalStreak[w.id]++;
-      totalStreak.forEach((_,i)=>{if(i!==w.id)totalStreak[i]=0;});
-      showWinner(w.id);
-    } else if(alive.length===0){
-      winnerDeclared=true; slowMo=0.3;
+    if(p.life<=0){
+      scene.remove(p.mesh);
+      particles.splice(i,1);
     }
-  }
-  if(winnerDeclared){
-    roundTimer+=rawDt;
-    if(roundTimer>4.0){round++;spawnRound();}
+  });
+
+  orbs.forEach(o=>{
+
+    if(!o.alive)return;
+
+    o.mesh.position.copy(o.body.position);
+
+    o.mesh.rotation.y += dt*3;
+
+    ai(o,dt);
+
+    const p=o.body.position;
+
+    if(Math.abs(p.x)>HALF||Math.abs(p.z)>HALF||p.y<-2){
+      eliminate(o);
+    }
+  });
+
+  const alive = orbs.filter(o=>o.alive);
+
+  document.getElementById('alive').innerHTML=`${alive.length}/4`;
+  document.getElementById('kills').innerHTML=totalKills.reduce((a,b)=>a+b,0);
+
+  if(!winner && alive.length===1){
+
+    winner=true;
+
+    slowmo=.25;
+
+    const w=alive[0];
+
+    totalKills[w.id]++;
+
+    winnerEl.style.opacity='1';
+    winnerName.innerHTML=ORBS[w.id].name;
+    winnerName.style.color='#'+ORBS[w.id].color.toString(16);
+
+    setTimeout(()=>{
+
+      winnerEl.style.opacity='0';
+      slowmo=1;
+      round++;
+
+      orbs.forEach(o=>{
+        try{world.removeBody(o.body)}catch(e){}
+        scene.remove(o.mesh);
+      });
+
+      spawn();
+
+      winner=false;
+
+      document.getElementById('roundNum').innerHTML=round;
+
+    },4000);
   }
 
-  sbTimer+=rawDt; if(sbTimer>0.22){sbTimer=0;updateScoreboard();}
+  updateBoard();
+
   renderer.render(scene,camera);
 }
+
 loop();
 
-addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+});
+
 </script>
 </body>
 </html>
