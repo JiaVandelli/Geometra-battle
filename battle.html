@@ -30,10 +30,11 @@ import * as CANNON from 'cannon-es';
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x050010);
-scene.fog = new THREE.FogExp2(0x110022, 0.025);
+scene.fog = new THREE.FogExp2(0x110022, 0.02);
 
-const camera = new THREE.PerspectiveCamera(65, innerWidth/innerHeight, 0.1, 100);
-camera.position.set(8, 10, 12);
+const camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.1, 100);
+// CAMERA ALTA CHE INQUADRA TUTTO
+camera.position.set(0, 18, 18);
 
 const renderer = new THREE.WebGLRenderer({antialias:true});
 renderer.setSize(innerWidth, innerHeight);
@@ -46,28 +47,40 @@ scene.add(dl);
 
 const world = new CANNON.World({gravity:new CANNON.Vec3(0,-25,0)});
 const mat = new CANNON.Material();
-world.defaultContactMaterial = new CANNON.ContactMaterial(mat, mat, {friction:0.05, restitution:0.85});
+world.defaultContactMaterial = new CANNON.ContactMaterial(mat, mat, {friction:0.05, restitution:0.9});
 
-// CAMPO QUADRATO 14x14 + BORDINO
+// CAMPO QUADRATO 14x14
 const half = 7;
 world.addBody(new CANNON.Body({mass:0, shape:new CANNON.Plane(), material:mat, quaternion:new CANNON.Quaternion().setFromEuler(-Math.PI/2,0,0)}));
 const plane = new THREE.Mesh(new THREE.PlaneGeometry(half*2, half*2), new THREE.MeshStandardMaterial({color:0x1a0033, emissive:0x6600aa, emissiveIntensity:0.25, metalness:0.6, roughness:0.2}));
 plane.rotation.x = -Math.PI/2;
 scene.add(plane);
 
-// bordino rialzato 0.8m
-[[0,half,half,0.25],[0,-half,half,0.25],[half,0,0.25,half],[-half,0,0.25,half]].forEach(([x,z,w,h])=>{
-  const b = new CANNON.Body({mass:0, shape:new CANNON.Box(new CANNON.Vec3(w,0.4,h)), material:mat});
-  b.position.set(x,0.4,z);
-  world.addBody(b);
-  const vis = new THREE.Mesh(new THREE.BoxGeometry(w*2,0.8,h*2), new THREE.MeshStandardMaterial({color:0x5500aa, emissive:0xaa00ff, emissiveIntensity:0.4}));
-  vis.position.set(x,0.4,z);
-  scene.add(vis);
+// BORDO CURVO BASSO 0.25m
+const rimH = 0.25;
+const rimMat = new THREE.MeshStandardMaterial({color:0x7700cc, emissive:0xaa00ff, emissiveIntensity:0.5, metalness:0.8, roughness:0.3});
+[[0,half,half,0.15],[0,-half,half,0.15],[half,0,0.15,half],[-half,0,0.15,half]].forEach(([x,z,w,d])=>{
+  // fisica bassa
+  const b = new CANNON.Body({mass:0, shape:new CANNON.Box(new CANNON.Vec3(w, rimH/2, d)), material:mat});
+  b.position.set(x, rimH/2, z); world.addBody(b);
+  // visivo arrotondato
+  const geo = new THREE.CylinderGeometry(0.15,0.15,w*2,16);
+  const mesh = new THREE.Mesh(geo, rimMat);
+  mesh.rotation.z = w>d? Math.PI/2 : 0;
+  mesh.rotation.x = Math.PI/2;
+  mesh.position.set(x, rimH/2, z);
+  scene.add(mesh);
 });
-// muri invisibili dietro
-[[0,half+0.6,half+1,0.3],[0,-half-0.6,half+1,0.3],[half+0.6,0,0.3,half+1],[-half-0.6,0,0.3,half+1]].forEach(([x,z,w,h])=>{
-  const b = new CANNON.Body({mass:0, shape:new CANNON.Box(new CANNON.Vec3(w,2.5,h)), material:mat});
-  b.position.set(x,2.5,z); world.addBody(b);
+// angoli curvi
+[[-half,half],[half,half],[half,-half],[-half,-half]].forEach(([x,z])=>{
+  const corner = new THREE.Mesh(new THREE.SphereGeometry(0.15,16,16,0,Math.PI*2,0,Math.PI/2), rimMat);
+  corner.position.set(x,0.15,z); scene.add(corner);
+});
+
+// muri invisibili lontani per kill
+[[0,half+1.2,half+2,0.3],[0,-half-1.2,half+2,0.3],[half+1.2,0,0.3,half+2],[-half-1.2,0,0.3,half+2]].forEach(([x,z,w,h])=>{
+  const b = new CANNON.Body({mass:0, shape:new CANNON.Box(new CANNON.Vec3(w,3,h)), material:mat});
+  b.position.set(x,3,z); world.addBody(b);
 });
 
 const colors = [0xff3355, 0x3388ff, 0x33ff77, 0xbb44ff];
@@ -116,30 +129,16 @@ function ai(o,dt){
 
   o.cd = Math.max(0, o.cd-dt);
   if(o.cd<=0){
-    if(o.power===0){ // TELEPORT
-      const ang = Math.random()*Math.PI*2, r = 2+Math.random()*3;
-      let nx = o.body.position.x + Math.cos(ang)*r;
-      let nz = o.body.position.z + Math.sin(ang)*r;
-      nx = Math.max(-6.5, Math.min(6.5, nx));
-      nz = Math.max(-6.5, Math.min(6.5, nz));
-      o.body.position.set(nx,1,nz); o.body.velocity.set(0,0,0); o.cd=7;
-    } else if(o.power===1){ // SPEED
-      o.buff=3; o.cd=8;
-    } else if(o.power===2){ // INVIS
-      o.invis=4; o.cd=9;
-    } else if(o.power===3){ // CLONE
-      const c=o.mesh.clone(); c.material=c.material.clone(); c.material.opacity=0.4; c.material.transparent=true;
-      c.position.copy(o.mesh.position); scene.add(c); setTimeout(()=>scene.remove(c),5000); o.cd=10;
-    }
+    if(o.power===0){ const ang=Math.random()*Math.PI*2, r=2+Math.random()*3; let nx=o.body.position.x+Math.cos(ang)*r, nz=o.body.position.z+Math.sin(ang)*r; nx=Math.max(-6.5,Math.min(6.5,nx)); nz=Math.max(-6.5,Math.min(6.5,nz)); o.body.position.set(nx,1,nz); o.body.velocity.set(0,0,0); o.cd=7; }
+    else if(o.power===1){ o.buff=3; o.cd=8; }
+    else if(o.power===2){ o.invis=4; o.cd=9; }
+    else if(o.power===3){ const c=o.mesh.clone(); c.material=c.material.clone(); c.material.opacity=0.4; c.material.transparent=true; c.position.copy(o.mesh.position); scene.add(c); setTimeout(()=>scene.remove(c),5000); o.cd=10; }
   }
 
   const speed = o.buff>0?10:6, dashPow = o.buff>0?22:16;
   o.dash -= dt;
-  if(o.dash<=0 && dist<6){
-    o.body.velocity.x = dir.x*dashPow; o.body.velocity.z = dir.z*dashPow; o.body.velocity.y=0.5; o.dash=2.5+Math.random();
-  } else if(o.dash>1){
-    o.body.velocity.x = dir.x*speed; o.body.velocity.z = dir.z*speed;
-  }
+  if(o.dash<=0 && dist<6){ o.body.velocity.x = dir.x*dashPow; o.body.velocity.z = dir.z*dashPow; o.body.velocity.y=0.5; o.dash=2.5+Math.random(); }
+  else if(o.dash>1){ o.body.velocity.x = dir.x*speed; o.body.velocity.z = dir.z*speed; }
 }
 
 const clock = new THREE.Clock();
@@ -161,20 +160,13 @@ function loop(){
 
   orbs.forEach(o=>{
     if(!o.alive) return;
-    const out = Math.abs(o.body.position.x)>half+0.5 || Math.abs(o.body.position.z)>half+0.5 || o.body.position.y<-2;
-    if(out){
-      const killer = orbs.find(k=>k.alive && k!==o && k.body.position.distanceTo(o.body.position)<2.5);
-      if(killer) kills[killer.id]++;
-      o.alive=false; o.mesh.visible=false; o.trail.visible=false; world.removeBody(o.body);
-    }
+    const out = Math.abs(o.body.position.x)>half+1 || Math.abs(o.body.position.z)>half+1 || o.body.position.y<-2;
+    if(out){ const killer = orbs.find(k=>k.alive && k!==o && k.body.position.distanceTo(o.body.position)<2.5); if(killer) kills[killer.id]++; o.alive=false; o.mesh.visible=false; o.trail.visible=false; world.removeBody(o.body); }
   });
 
   const alive = orbs.filter(o=>o.alive);
-  if(alive.length===1){
-    if(timer===0){ const w=alive[0]; streak[w.id]++; streak.forEach((v,i)=>{if(i!==w.id)streak[i]=0}); showWin(w.id); slowMo=0.3; }
-    timer+=dt;
-    if(timer>3){ orbs.forEach(o=>{world.removeBody(o.body); scene.remove(o.mesh); scene.remove(o.trail)}); orbs.length=0; spawns.forEach(([x,z],i)=>orbs.push(make(i,x,z))); timer=0; slowMo=1; }
-  } else if(alive.length===0){ timer+=dt; if(timer>1){ orbs.length=0; spawns.forEach(([x,z],i)=>orbs.push(make(i,x,z))); timer=0; } }
+  if(alive.length===1){ if(timer===0){ const w=alive[0]; streak[w.id]++; streak.forEach((v,i)=>{if(i!==w.id)streak[i]=0}); showWin(w.id); slowMo=0.3; } timer+=dt; if(timer>3){ orbs.forEach(o=>{world.removeBody(o.body); scene.remove(o.mesh); scene.remove(o.trail)}); orbs.length=0; spawns.forEach(([x,z],i)=>orbs.push(make(i,x,z))); timer=0; slowMo=1; } }
+  else if(alive.length===0){ timer+=dt; if(timer>1){ orbs.length=0; spawns.forEach(([x,z],i)=>orbs.push(make(i,x,z))); timer=0; } }
   else { timer=0; slowMo=1; }
 
   camera.lookAt(0,0,0);
