@@ -74,13 +74,20 @@ document.body.appendChild(renderer.domElement);
 /* ══════════ LIGHTS ══════════ */
 scene.add(new THREE.AmbientLight(0x220044, 1.5));
 scene.add(new THREE.HemisphereLight(0x9955ff, 0x110022, 1.8));
+
 const sun = new THREE.DirectionalLight(0xffffff, 1.4);
-sun.position.set(8,16,8); sun.castShadow=true;
+sun.position.set(8,16,8);
+sun.castShadow = true;
 sun.shadow.mapSize.set(1024,1024);
-sun.shadow.camera.left=sun.shadow.camera.bottom=-22;
-sun.shadow.camera.right=sun.shadow.camera.top=22;
+sun.shadow.camera.left = -22;
+sun.shadow.camera.bottom = -22;
+sun.shadow.camera.right = 22;
+sun.shadow.camera.top = 22;
 scene.add(sun);
-scene.add(Object.assign(new THREE.DirectionalLight(0x4400aa,0.6),{position:new THREE.Vector3(-8,4,-8)}));
+
+const fill = new THREE.DirectionalLight(0x4400aa, 0.6);
+fill.position.set(-8, 4, -8);
+scene.add(fill);
 
 /* ══════════ STARS ══════════ */
 const starGeo = new THREE.BufferGeometry();
