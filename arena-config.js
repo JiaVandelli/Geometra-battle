@@ -1,12 +1,12 @@
 /* ╔═══════════════════════════════════════════════════════════════╗
-   ║ ARENA CONFIG — ILLUSORE vs BATTERIO v2.2 TOURNAMENT ║
+   ║ ARENA CONFIG — ILLUSORE vs BATTERIO v2.3 NO-LIFT ║
    ╚═══════════════════════════════════════════════════════════════╝ */
 
 export const CONFIG = {
-  arena: { radius: 8, gravity: -60, friction: 0.12, restitution: 0.38 },
+  arena: { radius: 8, gravity: -95, friction: 0.38, restitution: 0.65 },
   camera: { fov: 58, orbitRadius: 24, orbitSpeed: 0.0042, orbitBob: 2.5, height: 14 },
   round: { winSlowMo: 0.12, winDuration: 5, introDuration: 3200 },
-  orb: { radius: 0.58, mass: 6.5, linearDamping: 0.20, baseSpeed: 6.5, buffSpeed: 10.5, heavySpeed: 6.5, dashPower: 14, buffDashPow: 18, heavyDashPower: 14, dashCooldown: 1.15, dashRandExtra: 0.7, noEdgeDash: 6.0, edgeAvoidFrom: 4.6 },
+  orb: { radius: 0.58, mass: 6.5, linearDamping: 0.12, baseSpeed: 6.8, buffSpeed: 10.8, heavySpeed: 8.0, dashPower: 17, buffDashPow: 21, heavyDashPower: 19, dashCooldown: 1.1, dashRandExtra: 0.6, noEdgeDash: 6.0, edgeAvoidFrom: 4.6 },
 
   spawns: [ [-4.8, 0], [4.8, 0] ],
 
@@ -35,11 +35,11 @@ export const CONFIG = {
           o.passiveTimer = 0;
         }
 
-        o.intangible = true;
+        o.intangible = true; // <-- diventa intoccabile per 1.2s
         o.mesh.material.opacity = 0.35;
         o.mesh.material.transparent = true;
         burst(o.body.position, 0xdd44ff, 22, 7);
-        o.buff = 1.20; // nerf da 1.35
+        o.buff = 1.20;
 
         effects.push({ update(dt){
           o.intangibleTime = (o.intangibleTime||0)+dt;
@@ -63,13 +63,12 @@ export const CONFIG = {
                 const tmp = o.body.position.clone();
                 o.body.position.copy(o.clone.position);
                 o.clone.position.copy(tmp);
-                // FIX: conserva inerzia invece di azzerare
                 o.body.velocity.scale(0.8, o.body.velocity);
                 burst(o.body.position, 0xaa00ff, 14, 5);
-                o.buff = 1.05; // nerf da 1.15
+                o.buff = 1.05;
               }
             }
-            if(o.clone) o.clone.position.lerp(o.body.position, 0.05); // era 0.02
+            if(o.clone) o.clone.position.lerp(o.body.position, 0.05);
             return true;
           }});
         }
@@ -109,11 +108,10 @@ export const CONFIG = {
         if(c===0) return;
         mine.forEach(m=>{ m.alive=false; scene.remove(m.mesh); try{world.removeBody(m.body)}catch(e){} burst(m.body.position,0x66ff99,10,4); });
         
-        // FIX: curva sqrt invece di lineare
         const gain = Math.sqrt(c);
         o.scale = Math.min(1.5, (o.scale||1) + 0.04*gain);
         o.mesh.scale.setScalar(o.scale);
-        o.body.mass += 0.25*gain; // era 0.35*c
+        o.body.mass += 0.25*gain;
         o.body.updateMassProperties();
         burst(o.body.position, 0x66ff99, 22 + c*2, 7);
         o.buff = 1.1;
