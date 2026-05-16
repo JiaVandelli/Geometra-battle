@@ -1,60 +1,42 @@
 /* ╔═══════════════════════════════════════════════════════════════╗
-   ║ ARENA CONFIG — v3.3 SPHERE SMOOTH (solo JS) ║
+   ║ ARENA CONFIG — v3.4 COMBAT YOUTUBE (aggiornato) ║
    ╚═══════════════════════════════════════════════════════════════╝ */
 
 export const CONFIG = {
   arena: {
     radius: 8,
-    /* gravità stabile */
     gravity: -60,
-    /* meno attrito fisico brutto */
-    friction: 0.12,
-    /* rimbalzo morbido */
-    restitution: 0.18,
-    shrinkAfter: 15,
-    shrinkTo: 5.2,
+    friction: 0.05,      // scivolano come hockey
+    restitution: 0.42,   // rimbalzo forte quando si scontrano
+    shrinkAfter: 12,     // arena si stringe prima = più azione
+    shrinkTo: 4.8,
   },
   camera: { fov: 58, orbitRadius: 24, orbitSpeed: 0.0042, orbitBob: 2.5, height: 14 },
-  round: { winSlowMo: 0.12, winDuration: 5, introDuration: 3200 },
+  round: { winSlowMo: 0.12, winDuration: 4, introDuration: 3200 },
   orb: {
     radius: 0.58,
-
-    /* massa reale */
-    mass: 5.5,
-
-    /* movimento morbido */
-    linearDamping: 0.22,
+    mass: 6.2,           // più peso = spinte vere
+    linearDamping: 0.06, // quasi zero attrito
     angularDamping: 0.98,
-
-    /* niente rotazioni pazze */
     angularFactor: 0,
-
-    /* TORNA SFERA */
     shape: 'sphere',
-
-    /* movimento */
-    baseSpeed: 8.2,
-    buffSpeed: 10.5,
-    heavySpeed: 7.2,
-
-    /* dash */
-    dashPower: 18,
-    buffDashPow: 22,
-    heavyDashPower: 20,
-
-    dashCooldown: 1.0,
-    dashRandExtra: 0.2,
-
-    /* edge AI */
-    noEdgeDash: 6.2,
-    edgeAvoidFrom: 5.8,
+    baseSpeed: 13.5,     // vanno dritti
+    buffSpeed: 16.0,
+    heavySpeed: 11.0,
+    dashPower: 32,       // dash assassino
+    buffDashPow: 36,
+    heavyDashPower: 30,
+    dashCooldown: 0.55,  // dash ogni mezzo secondo
+    dashRandExtra: 0.15,
+    noEdgeDash: 7.8,     // possono dashare fino al bordo
+    edgeAvoidFrom: 7.6,  // <— QUESTO è il fix: girano solo a 40cm dal vuoto
   },
 
   spawns: [ [-4.8, 0], [4.8, 0] ],
 
   players: [
-    { name: 'ILLUSORE', color: 0xdd44ff, power: 'mirage', cd: 5.0 },
-    { name: 'BATTERIO', color: 0x66ff99, power: 'hive', cd: 5.0 },
+    { name: 'ILLUSORE', color: 0xdd44ff, power: 'mirage', cd: 4.2 }, // cd più basso
+    { name: 'BATTERIO', color: 0x66ff99, power: 'hive', cd: 4.2 },
   ],
 
   powers: {
@@ -181,7 +163,7 @@ export const CONFIG = {
         const targets = orbs.filter(x=>x.alive&&x!==o&&pos.distanceTo(x.body.position)<3.5);
         targets.forEach(t=>{
           const dir = t.body.position.clone().vsub(pos).unit();
-          dir.scale(18, dir);
+          dir.scale(22, dir); // spinta più forte
           t.body.velocity.vadd(dir, t.body.velocity);
         });
         burst(o.body.position, 0x66ff99, 22 + c*2, 7);
