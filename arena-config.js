@@ -1,5 +1,5 @@
 /* ╔═══════════════════════════════════════════════════════════════╗
-   ║ ARENA CONFIG — ILLUSORE vs BATTERIO v2.1 BALANCED ║
+   ║ ARENA CONFIG — ILLUSORE vs BATTERIO v2.2 TOURNAMENT ║
    ╚═══════════════════════════════════════════════════════════════╝ */
 
 export const CONFIG = {
@@ -12,7 +12,7 @@ export const CONFIG = {
 
   players: [
     { name: 'ILLUSORE', color: 0xdd44ff, power: 'mirage', cd: 5.0 },
-    { name: 'BATTERIO', color: 0x66ff99, power: 'hive', cd: 4.5 },
+    { name: 'BATTERIO', color: 0x66ff99, power: 'hive', cd: 5.0 },
   ],
 
   powers: {
@@ -35,12 +35,11 @@ export const CONFIG = {
           o.passiveTimer = 0;
         }
 
-        // INTANGIBILE (fix: non tocca il pavimento)
         o.intangible = true;
         o.mesh.material.opacity = 0.35;
         o.mesh.material.transparent = true;
         burst(o.body.position, 0xdd44ff, 22, 7);
-        o.buff = 1.35;
+        o.buff = 1.20; // nerf da 1.35
 
         effects.push({ update(dt){
           o.intangibleTime = (o.intangibleTime||0)+dt;
@@ -53,7 +52,6 @@ export const CONFIG = {
           return true;
         }});
 
-        // PASSIVO: swap ogni 4s
         if(!o.miragePassive){
           o.miragePassive = true;
           effects.push({ update(dt){
@@ -65,12 +63,13 @@ export const CONFIG = {
                 const tmp = o.body.position.clone();
                 o.body.position.copy(o.clone.position);
                 o.clone.position.copy(tmp);
-                o.body.velocity.set(0,0,0);
+                // FIX: conserva inerzia invece di azzerare
+                o.body.velocity.scale(0.8, o.body.velocity);
                 burst(o.body.position, 0xaa00ff, 14, 5);
-                o.buff = 1.15;
+                o.buff = 1.05; // nerf da 1.15
               }
             }
-            if(o.clone) o.clone.position.lerp(o.body.position, 0.02);
+            if(o.clone) o.clone.position.lerp(o.body.position, 0.05); // era 0.02
             return true;
           }});
         }
@@ -80,7 +79,7 @@ export const CONFIG = {
     hive: {
       label: '🦠 ABSORB SWARM',
       color: '#66ff99',
-      maxMinions: 6, // era 7, troppo
+      maxMinions: 6,
       minionRadius: 0.22,
       minionMass: 0.45,
       minionLife: 18,
@@ -89,7 +88,6 @@ export const CONFIG = {
         const { spawnMinion, minions, showEvent, burst, scene, world, effects } = ctx;
         showEvent(this.label, this.color);
 
-        // PASSIVO: spawna 1 ogni 3.5s
         if(!o.hivePassive){
           o.hivePassive = true;
           o.hiveTimer = 0;
@@ -106,15 +104,16 @@ export const CONFIG = {
           }});
         }
 
-        // ATTIVA: assorbi
         const mine = minions.filter(m=>m.alive&&m.owner===o);
         const c = mine.length;
         if(c===0) return;
         mine.forEach(m=>{ m.alive=false; scene.remove(m.mesh); try{world.removeBody(m.body)}catch(e){} burst(m.body.position,0x66ff99,10,4); });
         
-        o.scale = Math.min(1.7, (o.scale||1) + 0.06*c); // era 1.9 +0.07, troppo
+        // FIX: curva sqrt invece di lineare
+        const gain = Math.sqrt(c);
+        o.scale = Math.min(1.5, (o.scale||1) + 0.04*gain);
         o.mesh.scale.setScalar(o.scale);
-        o.body.mass += 0.35*c; // era 0.5, adesso p=mv più umano
+        o.body.mass += 0.25*gain; // era 0.35*c
         o.body.updateMassProperties();
         burst(o.body.position, 0x66ff99, 22 + c*2, 7);
         o.buff = 1.1;
