@@ -1,26 +1,26 @@
 /* ╔═══════════════════════════════════════════════════════════════╗
-   ║ ARENA CONFIG — v2.4 HOCKEY PUCK (no more sliding) ║
+   ║ ARENA CONFIG — v2.5 GRIP & CLONE FIX ║
    ╚═══════════════════════════════════════════════════════════════╝ */
 
 export const CONFIG = {
-  arena: { radius: 8, gravity: -110, friction: 0.9, restitution: 0.72, shrinkAfter: 20, shrinkTo: 5.5 },
+  arena: { radius: 8, gravity: -110, friction: 1.2, restitution: 0.55, shrinkAfter: 20, shrinkTo: 5.5 },
   camera: { fov: 58, orbitRadius: 24, orbitSpeed: 0.0042, orbitBob: 2.5, height: 14 },
   round: { winSlowMo: 0.12, winDuration: 5, introDuration: 3200 },
   orb: { 
     radius: 0.58, 
     mass: 6.5, 
-    linearDamping: 0.08, // meno freno
-    angularDamping: 0.95, // non girano su se stessi
-    shape: 'cylinder', // <-- TRUCCO: fisicamente è un disco
-    shapeHeight: 0.3, // basso e piatto
+    linearDamping: 0.08,
+    angularDamping: 1.0, // bloccato, non gira
+    shape: 'cylinder',
+    shapeHeight: 0.25, // ancora più piatto = più grip
     baseSpeed: 7.2, 
     buffSpeed: 11.2, 
     heavySpeed: 8.5, 
-    dashPower: 19, 
-    buffDashPow: 23, 
-    heavyDashPower: 21, 
+    dashPower: 20, // +1 per compensare attrito alto
+    buffDashPow: 24, 
+    heavyDashPower: 22, 
     dashCooldown: 1.0, 
-    dashRandExtra: 0.5, 
+    dashRandExtra: 0.4, // meno random = più prevedibile
     noEdgeDash: 6.0, 
     edgeAvoidFrom: 4.6 
   },
@@ -36,8 +36,8 @@ export const CONFIG = {
     mirage: {
       label: '🟣 PHASE WALK',
       color: '#dd44ff',
-      cloneOpacity: 0.18,
-      cloneDistance: 3.2,
+      cloneOpacity: 0.22, // più visibile
+      cloneDistance: 4.5, // era 3.2 -> ORA LONTANO
       onFire(o, ctx) {
         const { THREE, scene, burst, showEvent, doFlash, cameraShake, effects } = ctx;
         showEvent(this.label, this.color);
@@ -83,9 +83,11 @@ export const CONFIG = {
                 o.body.velocity.scale(0.8, o.body.velocity);
                 burst(o.body.position, 0xaa00ff, 14, 5);
                 o.buff = 1.05;
+                // riposiziona clone lontano dopo swap
+                o.clone.position.copy(o.body.position).x += (Math.random()>0.5?4.5:-4.5);
               }
             }
-            if(o.clone) o.clone.position.lerp(o.body.position, 0.05);
+            // NO LERP - il clone resta fermo dove l'hai lasciato
             return true;
           }});
         }
