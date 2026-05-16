@@ -1,7 +1,5 @@
 /* ╔══════════════════════════════════════════════════════════╗
-   ║              ARENA CONFIG — MODIFICA QUI                ║
-   ║  Questo file controlla tutto il gameplay e lo stile.    ║
-   ║  Il resto del codice NON va toccato.                    ║
+   ║          BLACKHOLE ARENA — DUEL CONFIG                  ║
    ╚══════════════════════════════════════════════════════════╝ */
 
 export const CONFIG = {
@@ -10,140 +8,224 @@ export const CONFIG = {
      ARENA
   ────────────────────────────────────────── */
   arena: {
-    radius:       8,       // raggio del ring circolare
-    gravity:     -28,      // forza di gravità (più negativo = cade prima)
-    friction:     0.04,
-    restitution:  0.78,    // quanto rimbalzano (0=no rimbalzo, 1=perfetto)
+    radius:        8,
+    gravity:      -30,
+    friction:      0.035,
+    restitution:   0.82,
   },
 
   /* ──────────────────────────────────────────
      CAMERA
-     (questi valori vengono usati dal loop,
-      puoi cambiarli senza toccare arena-core)
   ────────────────────────────────────────── */
   camera: {
-    orbitRadius:  26,      // distanza dal centro
-    orbitSpeed:   0.0038,  // velocità orbita (più alto = più veloce)
-    orbitBob:     3,       // oscillazione verticale
-    height:       15,      // altezza base camera
-    fov:          60,
+    orbitRadius:   24,
+    orbitSpeed:    0.0042,
+    orbitBob:      2.5,
+    height:        14,
+    fov:           58,
   },
 
   /* ──────────────────────────────────────────
      ROUND
   ────────────────────────────────────────── */
   round: {
-    winSlowMo:    0.18,    // slow-motion alla vittoria
-    winDuration:  4.2,     // secondi prima del prossimo round
-    introDuration:2800,    // ms prima che scompaia l'intro
+    bestOf:        5,
+    winSlowMo:     0.12,
+    winDuration:   5,
+    introDuration: 3200,
   },
 
   /* ──────────────────────────────────────────
-     ORB FISICA
+     ORB
   ────────────────────────────────────────── */
   orb: {
-    radius:       0.55,    // dimensione sfera
-    mass:         3,
-    linearDamping:0.06,    // attrito aria (0=scivolano, 1=si fermano subito)
-    baseSpeed:    6,       // velocità normale
-    buffSpeed:    11,      // velocità con buff attivo
-    dashPower:    15,      // forza del dash
-    buffDashPow:  20,      // forza dash con buff
-    dashCooldown: 1.3,     // secondi tra un dash e l'altro
-    dashRandExtra:1.0,     // variazione random del cooldown dash
-    noEdgeDash:   5.8,     // se radiale > questo valore, non dasher (evita autoelim)
-    edgeAvoidFrom:4.5,     // da questa distanza dal centro inizia l'avoidance
+    radius:          0.58,
+    mass:            3,
+
+    linearDamping:   0.055,
+
+    baseSpeed:       7.2,
+    heavySpeed:      4.4,
+
+    dashPower:       17,
+    heavyDashPower:  10,
+
+    dashCooldown:    1.15,
+    dashRandExtra:   0.7,
+
+    noEdgeDash:      6.0,
+    edgeAvoidFrom:   4.6,
   },
 
   /* ──────────────────────────────────────────
-     SPAWN POSITIONS  (x, z)
-     Aggiungi/rimuovi posizioni per cambiare
-     il numero di giocatori!
+     SPAWNS
   ────────────────────────────────────────── */
   spawns: [
-    [-5,  5],
-    [ 5, -5],
-    [-5, -5],
-    [ 5,  5],
+    [-4.8, 0],
+    [ 4.8, 0],
   ],
 
   /* ──────────────────────────────────────────
-     GIOCATORI
-     Ogni oggetto = un orb. Puoi:
-     - cambiare name, color
-     - cambiare power (vedi sezione POWERS)
-     - cambiare cd (cooldown in secondi)
+     DUELISTS
   ────────────────────────────────────────── */
   players: [
-    { name:'ROSSO', color:0xff3355, power:'explosion', cd:4  },
-    { name:'BLU',   color:0x3388ff, power:'minion',    cd:3  },
-    { name:'VERDE', color:0x33ff88, power:'ghost',     cd:5  },
-    { name:'VIOLA', color:0xdd44ff, power:'blackhole', cd:7  },
+
+    /* ─────────────────────────────
+       MIRAGE — ILLUSIONIST
+    ───────────────────────────── */
+    {
+      name:  'MIRAGE',
+      color: 0xdd44ff,
+      power: 'illusion',
+      cd:    3.2,
+
+      ai: {
+        aggression: 0.45,
+        trickster:  1.0,
+        edgeFear:   0.65,
+      }
+    },
+
+    /* ─────────────────────────────
+       HIVE — BACTERIA
+    ───────────────────────────── */
+    {
+      name:  'HIVE',
+      color: 0x66ff99,
+      power: 'hive',
+      cd:    4.8,
+
+      ai: {
+        aggression: 0.85,
+        trickster:  0.1,
+        edgeFear:   0.25,
+      }
+    },
+
   ],
 
   /* ──────────────────────────────────────────
-     POWERS — parametri per ogni abilità
-     Cambia solo i numeri, non le chiavi!
+     POWERS
   ────────────────────────────────────────── */
   powers: {
 
-    explosion: {
-      label:       '💥 EXPLOSION',
-      color:       '#ff3355',
-      pushForce:   18,     // forza orizzontale sulle sfere colpite
-      maxForce:    26,     // cap massimo della forza
-      pushY:       0.4,    // forza verticale (bassa = scvolano fuori, alta = saltano)
-      minionForce: 22,     // forza sui minion
-      shakeIntensity: 0.8,
-      flashColor:  '#ff3355',
-      particleCount: 50,
+    /* ═══════════════════════════════
+       🟣 MIRAGE
+    ═══════════════════════════════ */
+    illusion: {
+
+      label: '🟣 MIRAGE SHIFT',
+      color: '#dd44ff',
+
+      /* clone */
+      cloneOpacity:      0.22,
+      cloneDistance:     2.8,
+      cloneMoveLag:      0.08,
+
+      /* swap */
+      swapCooldown:      3,
+      swapChance:        0.55,
+
+      swapFlash:         '#ff88ff',
+      swapShake:         0.4,
+
+      /* fake physics */
+      fakeCollisionPush: 0,
+
+      /* trampoline mode */
+      prismDuration:     1.8,
+      prismCooldown:     6,
+
+      prismBounceForce:  28,
+      prismPushY:        1.1,
+
+      prismMass:         9,
+
+      prismScaleX:       1.8,
+      prismScaleY:       0.9,
+      prismScaleZ:       1.8,
+
+      /* mobility */
+      speedBoost:        1.2,
     },
 
-    minion: {
-      label:       '🤖 MINION',
-      color:       '#3388ff',
-      maxMinions:  3,      // massimo minion contemporanei per BLU
-      minionLife:  20,     // secondi prima che il minion scompaia
-      minionSpeed: 9,      // velocità AI minion
-      minionMass:  0.8,
-    },
+    /* ═══════════════════════════════
+       🦠 HIVE
+    ═══════════════════════════════ */
+    hive: {
 
-    ghost: {
-      label:       '👻 GHOST RUSH',
-      color:       '#33ff88',
-      invisDur:    4,      // secondi di invisibilità
-      buffDur:     4,      // secondi di velocità aumentata
-    },
+      label: '🦠 HIVE MASS',
+      color: '#66ff99',
 
-    blackhole: {
-      label:       '🕳️ BLACKHOLE',
-      color:       '#dd44ff',
-      duration:    2.2,    // secondi in cui attira
-      pullForce:   30,     // forza di attrazione (su dt)
-      pullFalloff: 10,     // divisore distanza (più alto = meno forza a distanza)
-      centerBias:  0.25,   // quanto il BH spawna vicino al centro (0=su VIOLA, 1=al centro)
-      shakeIntensity: 0.5,
-      flashColor:  '#dd44ff',
+      /* spawn */
+      maxMinions:        7,
+      spawnCooldown:     3.5,
+
+      minionRadius:      0.24,
+      minionMass:        0.55,
+
+      minionLife:        22,
+      minionSpeed:       8.5,
+
+      minionPushForce:   0.45,
+
+      /* absorb */
+      absorbCooldown:    8,
+
+      absorbScaleGain:   0.08,
+      absorbMassGain:    0.4,
+
+      maxScale:          2.2,
+
+      /* drawbacks */
+      heavySlowFactor:   0.72,
+      heavyDashFactor:   0.62,
+
+      /* visuals */
+      absorbFlash:       '#99ffcc',
+      absorbShake:       0.8,
     },
 
   },
 
   /* ──────────────────────────────────────────
-     VISUAL — colori e stile arena
+     VISUAL
   ────────────────────────────────────────── */
   visual: {
-    floorColor:       0x180022,
-    floorEmissive:    0x7700ff,
-    floorEmissiveInt: 0.28,
-    rimColor:         0xcc00ff,
-    dangerColor:      0xff0044,
-    vortex1Color:     0xcc44ff,
-    vortex2Color:     0x8800aa,
-    fogColor:         0x160024,
-    fogDensity:       0.022,
-    bgColor:          0x020008,
-    starCount:        4000,
-    starSize:         0.32,
+
+    bgColor:            0x020008,
+
+    fogColor:           0x12001c,
+    fogDensity:         0.024,
+
+    floorColor:         0x140018,
+    floorEmissive:      0xaa00ff,
+    floorEmissiveInt:   0.32,
+
+    rimColor:           0xdd00ff,
+    dangerColor:        0xff0044,
+
+    vortex1Color:       0xdd44ff,
+    vortex2Color:       0x7700aa,
+
+    starCount:          5000,
+    starSize:           0.38,
+
+    /* duel mood */
+    pulseArena:         true,
+    pulseSpeed:         1.8,
+
+    /* cinematic */
+    hitFlashIntensity:  0.8,
+    edgeGlow:           1.3,
+
+    /* mirage visuals */
+    cloneGlow:          1.4,
+    cloneTrailOpacity:  0.16,
+
+    /* hive visuals */
+    hiveCoreGlow:       1.6,
+    minionGlow:         0.7,
   },
 
 };
