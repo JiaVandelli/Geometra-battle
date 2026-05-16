@@ -1,41 +1,41 @@
 /* ╔═══════════════════════════════════════════════════════════════╗
-   ║ ARENA CONFIG — v3.4 COMBAT YOUTUBE (aggiornato) ║
+   ║ ARENA CONFIG — v3.5 NO-ORBIT FIX ║
    ╚═══════════════════════════════════════════════════════════════╝ */
 
 export const CONFIG = {
   arena: {
     radius: 8,
     gravity: -60,
-    friction: 0.05,      // scivolano come hockey
-    restitution: 0.42,   // rimbalzo forte quando si scontrano
-    shrinkAfter: 12,     // arena si stringe prima = più azione
+    friction: 0.05,
+    restitution: 0.42,
+    shrinkAfter: 12,
     shrinkTo: 4.8,
   },
   camera: { fov: 58, orbitRadius: 24, orbitSpeed: 0.0042, orbitBob: 2.5, height: 14 },
   round: { winSlowMo: 0.12, winDuration: 4, introDuration: 3200 },
   orb: {
     radius: 0.58,
-    mass: 6.2,           // più peso = spinte vere
-    linearDamping: 0.06, // quasi zero attrito
+    mass: 6.2,
+    linearDamping: 0.06,
     angularDamping: 0.98,
     angularFactor: 0,
     shape: 'sphere',
-    baseSpeed: 13.5,     // vanno dritti
-    buffSpeed: 16.0,
-    heavySpeed: 11.0,
-    dashPower: 32,       // dash assassino
+    baseSpeed: 18.0,     // era 13.5 — più spinta
+    buffSpeed: 22.0,     // era 16.0
+    heavySpeed: 15.0,    // era 11.0
+    dashPower: 32,
     buffDashPow: 36,
     heavyDashPower: 30,
-    dashCooldown: 0.55,  // dash ogni mezzo secondo
+    dashCooldown: 0.55,
     dashRandExtra: 0.15,
-    noEdgeDash: 7.8,     // possono dashare fino al bordo
-    edgeAvoidFrom: 7.6,  // <— QUESTO è il fix: girano solo a 40cm dal vuoto
+    noEdgeDash: 7.95,    // era 7.8
+    edgeAvoidFrom: 7.95, // era 7.6 — <— FIX PRINCIPALE
   },
 
   spawns: [ [-4.8, 0], [4.8, 0] ],
 
   players: [
-    { name: 'ILLUSORE', color: 0xdd44ff, power: 'mirage', cd: 4.2 }, // cd più basso
+    { name: 'ILLUSORE', color: 0xdd44ff, power: 'mirage', cd: 4.2 },
     { name: 'BATTERIO', color: 0x66ff99, power: 'hive', cd: 4.2 },
   ],
 
@@ -113,7 +113,6 @@ export const CONFIG = {
                 burst(o.body.position, 0xaa00ff, 14, 5);
                 o.clone.position.copy(safeClonePos(o.body.position));
               }
-            }
             return true;
           }});
         }
@@ -163,7 +162,7 @@ export const CONFIG = {
         const targets = orbs.filter(x=>x.alive&&x!==o&&pos.distanceTo(x.body.position)<3.5);
         targets.forEach(t=>{
           const dir = t.body.position.clone().vsub(pos).unit();
-          dir.scale(22, dir); // spinta più forte
+          dir.scale(22, dir);
           t.body.velocity.vadd(dir, t.body.velocity);
         });
         burst(o.body.position, 0x66ff99, 22 + c*2, 7);
