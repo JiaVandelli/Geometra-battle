@@ -1,5 +1,5 @@
 /* ╔═══════════════════════════════════════════════════════════════╗
-   ║ ARENA CONFIG — v2.7 BALANCED ABILITIES ║
+   ║ ARENA CONFIG — v2.8 CLONE SAFE ║
    ╚═══════════════════════════════════════════════════════════════╝ */
 
 export const CONFIG = {
@@ -44,19 +44,32 @@ export const CONFIG = {
         doFlash('#ff88ff', 0.28);
         cameraShake(0.25);
 
+        const safeClonePos = (centerPos) => {
+          const angle = Math.random() * Math.PI * 2;
+          const dist = 4.5;
+          const x = centerPos.x + Math.cos(angle) * dist;
+          const z = centerPos.z + Math.sin(angle) * dist;
+          const len = Math.sqrt(x*x + z*z);
+          const maxR = 6.5;
+          if (len > maxR) {
+            const s = maxR / len;
+            return new THREE.Vector3(x * s, centerPos.y, z * s);
+          }
+          return new THREE.Vector3(x, centerPos.y, z);
+        };
+
         if (!o.clone) {
           const mat = new THREE.MeshStandardMaterial({ color: 0xdd44ff, emissive: 0xdd44ff, transparent: true, opacity: this.cloneOpacity });
           o.clone = new THREE.Mesh(new THREE.SphereGeometry(0.58, 24, 24), mat);
-          o.clone.position.copy(o.body.position).x += this.cloneDistance;
+          o.clone.position.copy(safeClonePos(o.body.position));
           scene.add(o.clone);
           o.passiveTimer = 0;
         }
 
-        // STUN LEGGERO quando diventa ombra
         if(!o.intangible){
           const pos = o.body.position.clone();
           const near = orbs.filter(x=>x.alive&&x!==o&&pos.distanceTo(x.body.position)<2.5);
-          near.forEach(e=>{ e.stun=0.35; }); // era 0.8
+          near.forEach(e=>{ e.stun=0.35; });
           burst(o.body.position, 0xdd44ff, 15, 5);
         }
 
@@ -71,9 +84,8 @@ export const CONFIG = {
             o.mesh.material.opacity = 1;
             o.intangible = false;
             o.intangibleTime = 0;
-            // TURBO RIDOTTO
-            o.buff = 1.2; // era 1.3
-            setTimeout(()=>{ o.buff=1; }, 1000); // era 1500
+            o.buff = 1.2;
+            setTimeout(()=>{ o.buff=1; }, 1000);
             return false;
           }
           return true;
@@ -92,7 +104,7 @@ export const CONFIG = {
                 o.clone.position.copy(tmp);
                 o.body.velocity.scale(0.8, o.body.velocity);
                 burst(o.body.position, 0xaa00ff, 14, 5);
-                o.clone.position.copy(o.body.position).x += (Math.random()>0.5?4.5:-4.5);
+                o.clone.position.copy(safeClonePos(o.body.position));
               }
             }
             return true;
@@ -133,24 +145,22 @@ export const CONFIG = {
         const c = mine.length;
         if(c===0) return;
         mine.forEach(m=>{ m.alive=false; scene.remove(m.mesh); try{world.removeBody(m.body)}catch(e){} burst(m.body.position,0x66ff99,10,4); });
-        
+
         const gain = Math.sqrt(c);
         o.scale = Math.min(1.5, (o.scale||1) + 0.04*gain);
         o.mesh.scale.setScalar(o.scale);
         o.body.mass += 0.25*gain;
         o.body.updateMassProperties();
-        
-        // NUOVO: SCARAVENTO
+
         const pos = o.body.position.clone();
         const targets = orbs.filter(x=>x.alive&&x!==o&&pos.distanceTo(x.body.position)<3.5);
         targets.forEach(t=>{
           const dir = t.body.position.clone().vsub(pos).unit();
-          dir.scale(18, dir); // spinta di 18 = circa 2.5 caselle
+          dir.scale(18, dir);
           t.body.velocity.vadd(dir, t.body.velocity);
         });
         burst(o.body.position, 0x66ff99, 22 + c*2, 7);
-        
-        // buff ridato
+
         o.buff = 1.1;
         setTimeout(()=>{ o.buff=1; }, 2000);
       }
