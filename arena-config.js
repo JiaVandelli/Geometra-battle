@@ -1,9 +1,9 @@
 /* ╔═══════════════════════════════════════════════════════════════╗
-   ║ ARENA CONFIG — v2.9 SUMO MODE ║
+   ║ ARENA CONFIG — v3.0 CYLINDER TEST ║
    ╚═══════════════════════════════════════════════════════════════╝ */
 
 export const CONFIG = {
-  arena: { radius: 8, gravity: -150, friction: 1.8, restitution: 0.35, shrinkAfter: 15, shrinkTo: 5.0 },
+  arena: { radius: 8, gravity: -150, friction: 1.4, restitution: 0.4, shrinkAfter: 15, shrinkTo: 5.0 },
   camera: { fov: 58, orbitRadius: 24, orbitSpeed: 0.0042, orbitBob: 2.5, height: 14 },
   round: { winSlowMo: 0.12, winDuration: 5, introDuration: 3200 },
   orb: { 
@@ -12,8 +12,8 @@ export const CONFIG = {
     linearDamping: 0.05,
     angularDamping: 1.0,
     angularFactor: 0,
-    shape: 'box',
-    shapeSize: 1.0,
+    shape: 'cylinder',
+    shapeHeight: 0.15,
     baseSpeed: 7.5, 
     buffSpeed: 11.5, 
     heavySpeed: 9.0, 
