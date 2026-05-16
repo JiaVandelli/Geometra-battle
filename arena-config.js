@@ -1,5 +1,5 @@
 /* ╔═══════════════════════════════════════════════════════════════╗
-   ║ ARENA CONFIG — ILLUSORE vs BATTERIO v2 (p=mv FIX) ║
+   ║ ARENA CONFIG — ILLUSORE vs BATTERIO v2.1 BALANCED ║
    ╚═══════════════════════════════════════════════════════════════╝ */
 
 export const CONFIG = {
@@ -12,7 +12,7 @@ export const CONFIG = {
 
   players: [
     { name: 'ILLUSORE', color: 0xdd44ff, power: 'mirage', cd: 5.0 },
-    { name: 'BATTERIO', color: 0x66ff99, power: 'hive', cd: 4.0 },
+    { name: 'BATTERIO', color: 0x66ff99, power: 'hive', cd: 4.5 },
   ],
 
   powers: {
@@ -21,37 +21,30 @@ export const CONFIG = {
       color: '#dd44ff',
       cloneOpacity: 0.18,
       cloneDistance: 3.2,
-      passiveInterval: 4.0,
-      intangibleTime: 1.2,
       onFire(o, ctx) {
-        const { THREE, scene, burst, showEvent, doFlash, cameraShake, effects, world } = ctx;
+        const { THREE, scene, burst, showEvent, doFlash, cameraShake, effects } = ctx;
         showEvent(this.label, this.color);
         doFlash('#ff88ff', 0.28);
         cameraShake(0.25);
 
-        // init clone + passivo
         if (!o.clone) {
           const mat = new THREE.MeshStandardMaterial({ color: 0xdd44ff, emissive: 0xdd44ff, transparent: true, opacity: this.cloneOpacity });
           o.clone = new THREE.Mesh(new THREE.SphereGeometry(0.58, 24, 24), mat);
-          o.clone.position.copy(o.body.position);
-          o.clone.position.x += this.cloneDistance;
+          o.clone.position.copy(o.body.position).x += this.cloneDistance;
           scene.add(o.clone);
           o.passiveTimer = 0;
         }
 
-        // ATTIVA: intangibile
+        // INTANGIBILE (fix: non tocca il pavimento)
         o.intangible = true;
-        const oldMask = o.body.collisionFilterMask;
-        o.body.collisionFilterMask = 0; // nessuna collisione
         o.mesh.material.opacity = 0.35;
         o.mesh.material.transparent = true;
         burst(o.body.position, 0xdd44ff, 22, 7);
         o.buff = 1.35;
 
         effects.push({ update(dt){
-          o.intangibleTime = (o.intangibleTime||0) + dt;
+          o.intangibleTime = (o.intangibleTime||0)+dt;
           if(o.intangibleTime >= 1.2){
-            o.body.collisionFilterMask = oldMask;
             o.mesh.material.opacity = 1;
             o.intangible = false;
             o.intangibleTime = 0;
@@ -60,7 +53,7 @@ export const CONFIG = {
           return true;
         }});
 
-        // PASSIVO (installato una volta)
+        // PASSIVO: swap ogni 4s
         if(!o.miragePassive){
           o.miragePassive = true;
           effects.push({ update(dt){
@@ -77,8 +70,7 @@ export const CONFIG = {
                 o.buff = 1.15;
               }
             }
-            // tieni clone vicino
-            if(o.clone){ o.clone.position.lerp(o.body.position, 0.02); }
+            if(o.clone) o.clone.position.lerp(o.body.position, 0.02);
             return true;
           }});
         }
@@ -88,20 +80,16 @@ export const CONFIG = {
     hive: {
       label: '🦠 ABSORB SWARM',
       color: '#66ff99',
-      maxMinions: 7,
+      maxMinions: 6, // era 7, troppo
       minionRadius: 0.22,
       minionMass: 0.45,
       minionLife: 18,
       minionSpeed: 8.5,
-      absorbScaleGain: 0.07,
-      absorbMassGain: 0.5,
-      maxScale: 1.9,
-      passiveInterval: 3.5,
       onFire(o, ctx) {
         const { spawnMinion, minions, showEvent, burst, scene, world, effects } = ctx;
         showEvent(this.label, this.color);
 
-        // installa passivo una volta
+        // PASSIVO: spawna 1 ogni 3.5s
         if(!o.hivePassive){
           o.hivePassive = true;
           o.hiveTimer = 0;
@@ -109,7 +97,7 @@ export const CONFIG = {
             if(!o.alive) return false;
             o.hiveTimer += dt;
             const mine = minions.filter(m=>m.alive&&m.owner===o);
-            if(o.hiveTimer >= 3.5 && mine.length < 7){
+            if(o.hiveTimer >= 3.5 && mine.length < 6){
               o.hiveTimer = 0;
               spawnMinion(o,{ minionRadius:0.22, minionMass:0.45, minionLife:18, minionSpeed:8.5 });
               burst(o.body.position, 0x66ff99, 8, 3);
@@ -118,18 +106,17 @@ export const CONFIG = {
           }});
         }
 
-        // ATTIVA: assorbi tutto
+        // ATTIVA: assorbi
         const mine = minions.filter(m=>m.alive&&m.owner===o);
         const c = mine.length;
         if(c===0) return;
         mine.forEach(m=>{ m.alive=false; scene.remove(m.mesh); try{world.removeBody(m.body)}catch(e){} burst(m.body.position,0x66ff99,10,4); });
         
-        o.scale = Math.min(1.9, (o.scale||1) + 0.07*c);
+        o.scale = Math.min(1.7, (o.scale||1) + 0.06*c); // era 1.9 +0.07, troppo
         o.mesh.scale.setScalar(o.scale);
-        o.body.mass += 0.5*c; // p = mv → più massa = più spinta
+        o.body.mass += 0.35*c; // era 0.5, adesso p=mv più umano
         o.body.updateMassProperties();
-        burst(o.body.position, 0x66ff99, 26 + c*2, 8);
-        // NO speed down! rimane veloce
+        burst(o.body.position, 0x66ff99, 22 + c*2, 7);
         o.buff = 1.1;
       }
     },
