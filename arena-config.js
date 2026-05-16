@@ -1,12 +1,29 @@
 /* ╔═══════════════════════════════════════════════════════════════╗
-   ║ ARENA CONFIG — ILLUSORE vs BATTERIO v2.3 NO-LIFT ║
+   ║ ARENA CONFIG — v2.4 HOCKEY PUCK (no more sliding) ║
    ╚═══════════════════════════════════════════════════════════════╝ */
 
 export const CONFIG = {
-  arena: { radius: 8, gravity: -95, friction: 0.38, restitution: 0.65 },
+  arena: { radius: 8, gravity: -110, friction: 0.9, restitution: 0.72, shrinkAfter: 20, shrinkTo: 5.5 },
   camera: { fov: 58, orbitRadius: 24, orbitSpeed: 0.0042, orbitBob: 2.5, height: 14 },
   round: { winSlowMo: 0.12, winDuration: 5, introDuration: 3200 },
-  orb: { radius: 0.58, mass: 6.5, linearDamping: 0.12, baseSpeed: 6.8, buffSpeed: 10.8, heavySpeed: 8.0, dashPower: 17, buffDashPow: 21, heavyDashPower: 19, dashCooldown: 1.1, dashRandExtra: 0.6, noEdgeDash: 6.0, edgeAvoidFrom: 4.6 },
+  orb: { 
+    radius: 0.58, 
+    mass: 6.5, 
+    linearDamping: 0.08, // meno freno
+    angularDamping: 0.95, // non girano su se stessi
+    shape: 'cylinder', // <-- TRUCCO: fisicamente è un disco
+    shapeHeight: 0.3, // basso e piatto
+    baseSpeed: 7.2, 
+    buffSpeed: 11.2, 
+    heavySpeed: 8.5, 
+    dashPower: 19, 
+    buffDashPow: 23, 
+    heavyDashPower: 21, 
+    dashCooldown: 1.0, 
+    dashRandExtra: 0.5, 
+    noEdgeDash: 6.0, 
+    edgeAvoidFrom: 4.6 
+  },
 
   spawns: [ [-4.8, 0], [4.8, 0] ],
 
@@ -35,7 +52,7 @@ export const CONFIG = {
           o.passiveTimer = 0;
         }
 
-        o.intangible = true; // <-- diventa intoccabile per 1.2s
+        o.intangible = true;
         o.mesh.material.opacity = 0.35;
         o.mesh.material.transparent = true;
         burst(o.body.position, 0xdd44ff, 22, 7);
