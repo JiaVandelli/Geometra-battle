@@ -1,29 +1,53 @@
 /* ╔═══════════════════════════════════════════════════════════════╗
-   ║ ARENA CONFIG — v3.2 SUMO FIX (solo JS) ║
+   ║ ARENA CONFIG — v3.3 SPHERE SMOOTH (solo JS) ║
    ╚═══════════════════════════════════════════════════════════════╝ */
 
 export const CONFIG = {
-  arena: { radius: 8, gravity: -150, friction: 0.8, restitution: 0.6, shrinkAfter: 15, shrinkTo: 5.0 },
+  arena: {
+    radius: 8,
+    /* gravità stabile */
+    gravity: -60,
+    /* meno attrito fisico brutto */
+    friction: 0.12,
+    /* rimbalzo morbido */
+    restitution: 0.18,
+    shrinkAfter: 15,
+    shrinkTo: 5.2,
+  },
   camera: { fov: 58, orbitRadius: 24, orbitSpeed: 0.0042, orbitBob: 2.5, height: 14 },
   round: { winSlowMo: 0.12, winDuration: 5, introDuration: 3200 },
-  orb: { 
-    radius: 0.58, 
-    mass: 8.0,
-    linearDamping: 0.05,
-    angularDamping: 1.0,
+  orb: {
+    radius: 0.58,
+
+    /* massa reale */
+    mass: 5.5,
+
+    /* movimento morbido */
+    linearDamping: 0.22,
+    angularDamping: 0.98,
+
+    /* niente rotazioni pazze */
     angularFactor: 0,
-    shape: 'box',
-    shapeSize: 0.85,      // era 1.0
-    baseSpeed: 9.5,       // era 7.5
-    buffSpeed: 11.5, 
-    heavySpeed: 9.0, 
-    dashPower: 28,        // era 24
-    buffDashPow: 32,      // era 28
-    heavyDashPower: 30,   // era 26
-    dashCooldown: 0.9, 
-    dashRandExtra: 0.3,
-    noEdgeDash: 6.0, 
-    edgeAvoidFrom: 6.5    // era 4.6
+
+    /* TORNA SFERA */
+    shape: 'sphere',
+
+    /* movimento */
+    baseSpeed: 8.2,
+    buffSpeed: 10.5,
+    heavySpeed: 7.2,
+
+    /* dash */
+    dashPower: 18,
+    buffDashPow: 22,
+    heavyDashPower: 20,
+
+    dashCooldown: 1.0,
+    dashRandExtra: 0.2,
+
+    /* edge AI */
+    noEdgeDash: 6.2,
+    edgeAvoidFrom: 5.8,
   },
 
   spawns: [ [-4.8, 0], [4.8, 0] ],
