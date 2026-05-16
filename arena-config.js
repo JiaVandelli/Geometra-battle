@@ -1,5 +1,5 @@
 /* ╔═══════════════════════════════════════════════════════════════╗
-   ║ ARENA CONFIG — v3.0 CYLINDER TEST ║
+   ║ ARENA CONFIG — v3.1 HOCKEY PUCK (visuale sfera, fisica box) ║
    ╚═══════════════════════════════════════════════════════════════╝ */
 
 export const CONFIG = {
@@ -12,8 +12,8 @@ export const CONFIG = {
     linearDamping: 0.05,
     angularDamping: 1.0,
     angularFactor: 0,
-    shape: 'cylinder',
-    shapeHeight: 0.15,
+    shape: 'box',           // <— FISICA A CUBO (invisibile)
+    shapeSize: 1.0,         // grandezza del cubo
     baseSpeed: 7.5, 
     buffSpeed: 11.5, 
     heavySpeed: 9.0, 
