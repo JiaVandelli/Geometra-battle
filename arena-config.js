@@ -51,11 +51,9 @@ export const CONFIG = {
   /*  Aggiungi coppie [x, z] per più giocatori.
       Stai nella circonferenza (|x|²+|z|² < radius²).          */
   spawns: [
-    [-4.8,  0],
-    [ 4.8,  0],
-    [ 0,   -4.8],
-    [ 0,    4.8],
-  ],
+  [-4.8, 0],
+  [ 4.8, 0],
+],
 
   /* ─── GIOCATORI ─────────────────────────────────────────────── */
   /*  name    → etichetta UI
@@ -63,11 +61,20 @@ export const CONFIG = {
       power   → chiave in CONFIG.powers
       cd      → cooldown in secondi                              */
   players: [
-    { name:'ROSSO', color:0xff3355, power:'explosion', cd:4.0 },
-    { name:'BLU',   color:0x3388ff, power:'minion',    cd:3.0 },
-    { name:'VERDE', color:0x33ff88, power:'ghost',     cd:5.0 },
-    { name:'VIOLA', color:0xdd44ff, power:'blackhole', cd:7.0 },
-  ],
+  { 
+    name:'ILLUSORE', 
+    color:0xdd44ff, 
+    power:'mirage', 
+    cd:3.0 
+  },
+
+  { 
+    name:'BATTERIO', 
+    color:0x66ff99, 
+    power:'hive', 
+    cd:3.4 
+  },
+],
 
   /* ─── POWERS ────────────────────────────────────────────────── */
   /*  Ogni power DEVE avere:
