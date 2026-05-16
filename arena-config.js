@@ -1,9 +1,9 @@
 /* ╔═══════════════════════════════════════════════════════════════╗
-   ║ ARENA CONFIG — v3.1 HOCKEY PUCK (visuale sfera, fisica box) ║
+   ║ ARENA CONFIG — v3.2 SUMO FIX (solo JS) ║
    ╚═══════════════════════════════════════════════════════════════╝ */
 
 export const CONFIG = {
-  arena: { radius: 8, gravity: -150, friction: 1.4, restitution: 0.4, shrinkAfter: 15, shrinkTo: 5.0 },
+  arena: { radius: 8, gravity: -150, friction: 0.8, restitution: 0.6, shrinkAfter: 15, shrinkTo: 5.0 },
   camera: { fov: 58, orbitRadius: 24, orbitSpeed: 0.0042, orbitBob: 2.5, height: 14 },
   round: { winSlowMo: 0.12, winDuration: 5, introDuration: 3200 },
   orb: { 
@@ -12,18 +12,18 @@ export const CONFIG = {
     linearDamping: 0.05,
     angularDamping: 1.0,
     angularFactor: 0,
-    shape: 'box',           // <— FISICA A CUBO (invisibile)
-    shapeSize: 1.0,         // grandezza del cubo
-    baseSpeed: 7.5, 
+    shape: 'box',
+    shapeSize: 0.85,      // era 1.0
+    baseSpeed: 9.5,       // era 7.5
     buffSpeed: 11.5, 
     heavySpeed: 9.0, 
-    dashPower: 24,
-    buffDashPow: 28, 
-    heavyDashPower: 26, 
+    dashPower: 28,        // era 24
+    buffDashPow: 32,      // era 28
+    heavyDashPower: 30,   // era 26
     dashCooldown: 0.9, 
     dashRandExtra: 0.3,
     noEdgeDash: 6.0, 
-    edgeAvoidFrom: 4.6 
+    edgeAvoidFrom: 6.5    // era 4.6
   },
 
   spawns: [ [-4.8, 0], [4.8, 0] ],
