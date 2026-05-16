@@ -1,26 +1,27 @@
 /* ╔═══════════════════════════════════════════════════════════════╗
-   ║ ARENA CONFIG — v2.8 CLONE SAFE ║
+   ║ ARENA CONFIG — v2.9 SUMO MODE ║
    ╚═══════════════════════════════════════════════════════════════╝ */
 
 export const CONFIG = {
-  arena: { radius: 8, gravity: -110, friction: 1.2, restitution: 0.55, shrinkAfter: 20, shrinkTo: 5.5 },
+  arena: { radius: 8, gravity: -150, friction: 1.8, restitution: 0.35, shrinkAfter: 15, shrinkTo: 5.0 },
   camera: { fov: 58, orbitRadius: 24, orbitSpeed: 0.0042, orbitBob: 2.5, height: 14 },
   round: { winSlowMo: 0.12, winDuration: 5, introDuration: 3200 },
   orb: { 
     radius: 0.58, 
-    mass: 6.5, 
-    linearDamping: 0.08,
+    mass: 8.0,
+    linearDamping: 0.05,
     angularDamping: 1.0,
-    shape: 'cylinder',
-    shapeHeight: 0.25,
-    baseSpeed: 7.2, 
-    buffSpeed: 11.2, 
-    heavySpeed: 8.5, 
-    dashPower: 20,
-    buffDashPow: 24, 
-    heavyDashPower: 22, 
-    dashCooldown: 1.0, 
-    dashRandExtra: 0.4,
+    angularFactor: 0,
+    shape: 'box',
+    shapeSize: 1.0,
+    baseSpeed: 7.5, 
+    buffSpeed: 11.5, 
+    heavySpeed: 9.0, 
+    dashPower: 24,
+    buffDashPow: 28, 
+    heavyDashPower: 26, 
+    dashCooldown: 0.9, 
+    dashRandExtra: 0.3,
     noEdgeDash: 6.0, 
     edgeAvoidFrom: 4.6 
   },
