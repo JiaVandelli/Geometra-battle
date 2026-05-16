@@ -1,5 +1,5 @@
 /* ╔═══════════════════════════════════════════════════════════════╗
-   ║ ARENA CONFIG — v2.5 GRIP & CLONE FIX ║
+   ║ ARENA CONFIG — v2.7 BALANCED ABILITIES ║
    ╚═══════════════════════════════════════════════════════════════╝ */
 
 export const CONFIG = {
@@ -10,17 +10,17 @@ export const CONFIG = {
     radius: 0.58, 
     mass: 6.5, 
     linearDamping: 0.08,
-    angularDamping: 1.0, // bloccato, non gira
+    angularDamping: 1.0,
     shape: 'cylinder',
-    shapeHeight: 0.25, // ancora più piatto = più grip
+    shapeHeight: 0.25,
     baseSpeed: 7.2, 
     buffSpeed: 11.2, 
     heavySpeed: 8.5, 
-    dashPower: 20, // +1 per compensare attrito alto
+    dashPower: 20,
     buffDashPow: 24, 
     heavyDashPower: 22, 
     dashCooldown: 1.0, 
-    dashRandExtra: 0.4, // meno random = più prevedibile
+    dashRandExtra: 0.4,
     noEdgeDash: 6.0, 
     edgeAvoidFrom: 4.6 
   },
@@ -36,10 +36,10 @@ export const CONFIG = {
     mirage: {
       label: '🟣 PHASE WALK',
       color: '#dd44ff',
-      cloneOpacity: 0.22, // più visibile
-      cloneDistance: 4.5, // era 3.2 -> ORA LONTANO
+      cloneOpacity: 0.22,
+      cloneDistance: 4.5,
       onFire(o, ctx) {
-        const { THREE, scene, burst, showEvent, doFlash, cameraShake, effects } = ctx;
+        const { THREE, scene, burst, showEvent, doFlash, cameraShake, effects, orbs } = ctx;
         showEvent(this.label, this.color);
         doFlash('#ff88ff', 0.28);
         cameraShake(0.25);
@@ -52,11 +52,18 @@ export const CONFIG = {
           o.passiveTimer = 0;
         }
 
+        // STUN LEGGERO quando diventa ombra
+        if(!o.intangible){
+          const pos = o.body.position.clone();
+          const near = orbs.filter(x=>x.alive&&x!==o&&pos.distanceTo(x.body.position)<2.5);
+          near.forEach(e=>{ e.stun=0.35; }); // era 0.8
+          burst(o.body.position, 0xdd44ff, 15, 5);
+        }
+
         o.intangible = true;
         o.mesh.material.opacity = 0.35;
         o.mesh.material.transparent = true;
         burst(o.body.position, 0xdd44ff, 22, 7);
-        o.buff = 1.20;
 
         effects.push({ update(dt){
           o.intangibleTime = (o.intangibleTime||0)+dt;
@@ -64,6 +71,9 @@ export const CONFIG = {
             o.mesh.material.opacity = 1;
             o.intangible = false;
             o.intangibleTime = 0;
+            // TURBO RIDOTTO
+            o.buff = 1.2; // era 1.3
+            setTimeout(()=>{ o.buff=1; }, 1000); // era 1500
             return false;
           }
           return true;
@@ -82,12 +92,9 @@ export const CONFIG = {
                 o.clone.position.copy(tmp);
                 o.body.velocity.scale(0.8, o.body.velocity);
                 burst(o.body.position, 0xaa00ff, 14, 5);
-                o.buff = 1.05;
-                // riposiziona clone lontano dopo swap
                 o.clone.position.copy(o.body.position).x += (Math.random()>0.5?4.5:-4.5);
               }
             }
-            // NO LERP - il clone resta fermo dove l'hai lasciato
             return true;
           }});
         }
@@ -103,7 +110,7 @@ export const CONFIG = {
       minionLife: 18,
       minionSpeed: 8.5,
       onFire(o, ctx) {
-        const { spawnMinion, minions, showEvent, burst, scene, world, effects } = ctx;
+        const { spawnMinion, minions, showEvent, burst, scene, world, effects, orbs } = ctx;
         showEvent(this.label, this.color);
 
         if(!o.hivePassive){
@@ -132,8 +139,20 @@ export const CONFIG = {
         o.mesh.scale.setScalar(o.scale);
         o.body.mass += 0.25*gain;
         o.body.updateMassProperties();
+        
+        // NUOVO: SCARAVENTO
+        const pos = o.body.position.clone();
+        const targets = orbs.filter(x=>x.alive&&x!==o&&pos.distanceTo(x.body.position)<3.5);
+        targets.forEach(t=>{
+          const dir = t.body.position.clone().vsub(pos).unit();
+          dir.scale(18, dir); // spinta di 18 = circa 2.5 caselle
+          t.body.velocity.vadd(dir, t.body.velocity);
+        });
         burst(o.body.position, 0x66ff99, 22 + c*2, 7);
+        
+        // buff ridato
         o.buff = 1.1;
+        setTimeout(()=>{ o.buff=1; }, 2000);
       }
     },
   },
