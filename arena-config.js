@@ -51,11 +51,9 @@ export const CONFIG = {
   /*  Aggiungi coppie [x, z] per più giocatori.
       Stai nella circonferenza (|x|²+|z|² < radius²).          */
   spawns: [
-    [-4.8,  0],
-    [ 4.8,  0],
-    [ 0,   -4.8],
-    [ 0,    4.8],
-  ],
+  [-4.8, 0],
+  [ 4.8, 0],
+],
 
   /* ─── GIOCATORI ─────────────────────────────────────────────── */
   /*  name    → etichetta UI
@@ -63,11 +61,9 @@ export const CONFIG = {
       power   → chiave in CONFIG.powers
       cd      → cooldown in secondi                              */
   players: [
-    { name:'ROSSO', color:0xff3355, power:'explosion', cd:4.0 },
-    { name:'BLU',   color:0x3388ff, power:'minion',    cd:3.0 },
-    { name:'VERDE', color:0x33ff88, power:'ghost',     cd:5.0 },
-    { name:'VIOLA', color:0xdd44ff, power:'blackhole', cd:7.0 },
-  ],
+  { name:'ILLUSORE', color:0xdd44ff, power:'mirage', cd:3.0 },
+  { name:'BATTERIO', color:0x66ff99, power:'hive', cd:3.4 },
+],
 
   /* ─── POWERS ────────────────────────────────────────────────── */
   /*  Ogni power DEVE avere:
@@ -243,8 +239,42 @@ export const CONFIG = {
           });
           return true;
         }});
-      }
-    },
+    mirage: {
+  label:'🟣 MIRAGE SHIFT',
+  color:'#dd44ff',
+  cloneOpacity:0.22,
+  swapChance:0.65,
+  cloneDistance:2.8,
+  onFire(o, ctx){
+    const {THREE,scene,burst,showEvent,doFlash,cameraShake,orbs,effects}=ctx;
+    showEvent(this.label,this.color); doFlash('#ff88ff',.32); cameraShake(.35);
+    if(!o.clone){
+      const mat=new THREE.MeshStandardMaterial({color:0xdd44ff,emissive:0xdd44ff,transparent:true,opacity:this.cloneOpacity});
+      o.clone=new THREE.Mesh(new THREE.SphereGeometry(0.58,24,24),mat);
+      o.clone.position.copy(o.body.position); o.clone.position.x+=this.cloneDistance; scene.add(o.clone);
+    }
+    if(Math.random()<this.swapChance){
+      const tmp=o.body.position.clone(); o.body.position.copy(o.clone.position); o.body.velocity.set(0,0,0); o.clone.position.copy(tmp); burst(o.body.position,0xdd44ff,18,6);
+    }else{
+      const tri=new THREE.Mesh(new THREE.ConeGeometry(0.9,1.2,3),new THREE.MeshBasicMaterial({color:0xff66ff})); tri.rotation.x=Math.PI; tri.position.copy(o.clone.position); scene.add(tri); let life=1.6;
+      effects.push({update(dt){life-=dt; if(life<=0){scene.remove(tri);return false;} tri.rotation.y+=dt*6; orbs.forEach(t=>{if(!t.alive||t===o)return; const dx=t.body.position.x-tri.position.x,dz=t.body.position.z-tri.position.z,d=Math.hypot(dx,dz); if(d<1){t.body.velocity.x+=dx/(d||1)*18; t.body.velocity.z+=dz/(d||1)*18; t.body.velocity.y+=2; burst(t.body.position,0xff66ff,15,5); scene.remove(tri); life=0;}}); return true;}});
+    }
+    o.buff=1.2;
+  }
+},
+hive: {
+  label:'🦠 HIVE MASS',
+  color:'#66ff99',
+  maxMinions:7, minionRadius:0.22, minionMass:0.45, minionLife:18, minionSpeed:8,
+  absorbScaleGain:0.09, absorbMassGain:0.35, maxScale:2.1,
+  onFire(o, ctx){
+    const {spawnMinion,minions,showEvent,burst,scene,world}=ctx; showEvent(this.label,this.color);
+    const mine=minions.filter(m=>m.alive&&m.owner===o);
+    if(mine.length<this.maxMinions && Math.random()<0.72){ spawnMinion(o,{minionRadius:this.minionRadius,minionMass:this.minionMass,minionLife:this.minionLife,minionSpeed:this.minionSpeed}); burst(o.body.position,0x66ff99,10,4); }
+    else{ const c=Math.min(3,mine.length); if(c<=0)return; for(let i=0;i<c;i++){const m=mine[i]; m.alive=false; scene.remove(m.mesh); try{world.removeBody(m.body)}catch(e){} burst(m.body.position,0x66ff99,12,5);} o.scale=(o.scale||1)+this.absorbScaleGain*c; o.scale=Math.min(this.maxScale,o.scale); o.mesh.scale.setScalar(o.scale); o.body.mass+=this.absorbMassGain*c; o.body.updateMassProperties(); burst(o.body.position,0x66ff99,28,8); if(o.scale>1.3)o.buff=-1; }
+  }
+}, 
+    
 
     /* ════════════════════════════════════════════════════════════
        POTERI EXTRA — decommenta o aggiungine di nuovi
