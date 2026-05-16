@@ -108,31 +108,55 @@ export const CONFIG = {
     maxMinions:7, minionRadius:0.22, minionMass:0.45, minionLife:18, minionSpeed:8,
     absorbScaleGain:0.09, absorbMassGain:0.35, maxScale:2.1,
     onFire(o, ctx){
-      const {spawnMinion,minions,showEvent,burst,scene,world}=ctx; showEvent(this.label,this.color);
+      const {spawnMinion,minions,showEvent,burst,scene,world}=ctx;
+      showEvent(this.label,this.color);
+
       const mine=minions.filter(m=>m.alive&&m.owner===o);
-      if(mine.length<this.maxMinions && Math.random()<0.72){ spawnMinion(o,{minionRadius:this.minionRadius,minionMass:this.minionMass,minionLife:this.minionLife,minionSpeed:this.minionSpeed}); burst(o.body.position,0x66ff99,10,4); }
-      else{ const c=Math.min(3,mine.length); if(c<=0)return; for(let i=0;i<c;i++){const m=mine[i]; m.alive=false; scene.remove(m.mesh); try{world.removeBody(m.body)}catch(e){} burst(m.body.position,0x66ff99,12,5);} o.scale=(o.scale||1)+this.absorbScaleGain*c; o.scale=Math.min(this.maxScale,o.scale); o.mesh.scale.setScalar(o.scale); o.body.mass+=this.absorbMassGain*c; o.body.updateMassProperties(); burst(o.body.position,0x66ff99,28,8); if(o.scale>1.3)o.buff=-1; }
+
+      if(mine.length<this.maxMinions && Math.random()<0.72){
+        spawnMinion(o,{
+          minionRadius:this.minionRadius,
+          minionMass:this.minionMass,
+          minionLife:this.minionLife,
+          minionSpeed:this.minionSpeed
+        });
+
+        burst(o.body.position,0x66ff99,10,4);
+
+      } else {
+
+        const c=Math.min(3,mine.length);
+        if(c<=0)return;
+
+        for(let i=0;i<c;i++){
+          const m=mine[i];
+          m.alive=false;
+          scene.remove(m.mesh);
+
+          try{
+            world.removeBody(m.body)
+          }catch(e){}
+
+          burst(m.body.position,0x66ff99,12,5);
+        }
+
+        o.scale=(o.scale||1)+this.absorbScaleGain*c;
+        o.scale=Math.min(this.maxScale,o.scale);
+
+        o.mesh.scale.setScalar(o.scale);
+
+        o.body.mass+=this.absorbMassGain*c;
+        o.body.updateMassProperties();
+
+        burst(o.body.position,0x66ff99,28,8);
+
+        if(o.scale>1.3)o.buff=-1;
+      }
     }
   },
 
+}, // ← QUESTA TI MANCAVA
 
-   
- 
 
-  /* ─── VISUAL ────────────────────────────────────────────────── */
-  visual: {
-    bgColor:          0x020008,
-    fogColor:         0x12001c,
-    fogDensity:       0.024,
-    floorColor:       0x140018,
-    floorEmissive:    0xaa00ff,
-    floorEmissiveInt: 0.32,
-    rimColor:         0xdd00ff,
-    dangerColor:      0xff0044,
-    vortex1Color:     0xcc44ff,
-    vortex2Color:     0x8800aa,
-    starCount:        5000,
-    starSize:         0.38,
-  },
-
-};
+/* ─── VISUAL ────────────────────────────────────────────────── */
+visual: {
