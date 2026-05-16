@@ -291,15 +291,12 @@ function makeOrb(i){
     new THREE.MeshStandardMaterial({color:p.color,emissive:p.color,emissiveIntensity:.9,roughness:.18,metalness:.2})
   );
   mesh.castShadow=true; scene.add(mesh);
-
-  /* glow shell */
   mesh.add(new THREE.Mesh(
     new THREE.SphereGeometry(CO.radius*1.38,16,16),
     new THREE.MeshBasicMaterial({color:p.color,transparent:true,opacity:.1,side:THREE.BackSide})
   ));
   mesh.add(Object.assign(new THREE.PointLight(p.color,2,6)));
 
-  /* name label */
   const cv=document.createElement('canvas'); cv.width=256; cv.height=64;
   const ctx2d=cv.getContext('2d');
   ctx2d.font='bold 34px Orbitron,monospace'; ctx2d.fillStyle=hex(p.color); ctx2d.textAlign='center';
@@ -307,15 +304,32 @@ function makeOrb(i){
   const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),transparent:true,depthTest:false}));
   sp.scale.set(2.6,.65,1); sp.position.y=1.2; mesh.add(sp);
 
-  /* trail */
   const TLEN=32;
   const tGeo=new THREE.BufferGeometry();
   tGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(TLEN*3),3));
   const trailMesh=new THREE.Line(tGeo,new THREE.LineBasicMaterial({color:p.color,transparent:true,opacity:.55}));
   scene.add(trailMesh);
 
-  /* physics */
-  const body=new CANNON.Body({mass:CO.mass,shape:new CANNON.Sphere(CO.radius),material:pMat,linearDamping:CO.linearDamping});
+  /* ── PHYSICS SHAPE DAL CONFIG ── */
+  let shape;
+  if(CO.shape==='box'){
+    const s = CO.shapeSize || CO.radius*1.7;
+    shape = new CANNON.Box(new CANNON.Vec3(s/2,s/2,s/2));
+  } else if(CO.shape==='cylinder'){
+    shape = new CANNON.Cylinder(CO.radius, CO.radius, CO.shapeHeight||0.25, 16);
+  } else {
+    shape = new CANNON.Sphere(CO.radius);
+  }
+
+  const body=new CANNON.Body({
+    mass:CO.mass,
+    shape,
+    material:pMat,
+    linearDamping:CO.linearDamping,
+    angularDamping:CO.angularDamping||0.9
+  });
+  if(CO.angularFactor!==undefined) body.angularFactor.set(CO.angularFactor,CO.angularFactor,CO.angularFactor);
+
   body.position.set(sx,1,sz);
   body.velocity.set((Math.random()-.5)*4,0,(Math.random()-.5)*4);
   world.addBody(body);
