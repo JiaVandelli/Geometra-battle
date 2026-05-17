@@ -3,258 +3,94 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"/>
-<title>BLACKHOLE ARENA</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-<script type="importmap">{"imports":{
-  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
-}}</script>
-
+<title>ILLUSORE vs BATTERIO</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:'Orbitron',sans-serif}
-canvas{display:block}
+html,body{width:100%;height:100%;overflow:hidden;background:#0a0a0a}
+canvas{position:fixed;inset:0;width:100%;height:100%}
 
-#flash{position:fixed;inset:0;opacity:0;pointer-events:none;z-index:50;transition:opacity.07s}
-
-#intro{position:fixed;inset:0;z-index:40;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(circle at center,rgba(90,0,140,.3),rgba(0,0,0,.95));transition:opacity.9s}
-#intro-title{font-size:clamp(42px,9vw,90px);font-weight:900;letter-spacing:8px;color:#fff;text-shadow:0 0 20px #bb00ff,0 0 60px #bb00ff}
-#intro-sub{margin-top:16px;font-size:14px;letter-spacing:7px;color:#cc99ff;font-family:'Share Tech Mono',monospace}
-#intro-orbs{margin-top:48px;display:flex;gap:32px;align-items:center}
-.intro-dot{width:22px;height:22px;border-radius:50%;box-shadow:0 0 14px currentColor,0 0 30px currentColor}
-#intro-start{margin-top:32px;font-size:12px;letter-spacing:5px;color:#888;font-family:'Share Tech Mono',monospace;animation:blink 1.2s infinite}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
-
-#topbar{position:fixed;top:0;left:0;right:0;z-index:20;display:flex;justify-content:space-between;align-items:center;padding:18px 26px;background:linear-gradient(180deg,rgba(0,0,0,.88),transparent)}
-#logo{font-size:20px;font-weight:900;letter-spacing:4px;color:#fff;text-shadow:0 0 12px #bb00ff,0 0 30px #bb00ff}
-#round-badge{font-family:'Share Tech Mono',monospace;font-size:13px;letter-spacing:3px;color:#d5b2ff;border:1px solid rgba(200,120,255,.4);padding:9px 20px;border-radius:999px;background:rgba(50,0,80,.35);backdrop-filter:blur(10px)}
-
-#event-text{position:fixed;top:17%;left:50%;transform:translateX(-50%);z-index:20;font-size:28px;font-weight:900;letter-spacing:5px;color:#fff;text-shadow:0 0 20px currentColor;opacity:0;pointer-events:none;transition:opacity.18s;white-space:nowrap}
-
-#scoreboard{position:fixed;top:90px;left:18px;z-index:20;display:flex;flex-direction:column;gap:9px}
-.s-row{min-width:200px;padding:10px 14px;border-radius:14px;background:rgba(0,0,0,.62);border:1px solid rgba(255,255,255,.07);backdrop-filter:blur(10px);border-left:3px solid var(--c);transition:opacity.3s,filter.3s}
-.s-row.dead{opacity:.2;filter:grayscale(1)}
-.s-name{font-size:11px;font-weight:700;letter-spacing:2px;color:#fff}
-.s-power{margin-top:4px;font-size:9px;font-family:'Share Tech Mono',monospace;color:var(--c);letter-spacing:1px}
-.s-kills{margin-top:6px;font-size:17px;font-weight:900;color:var(--c);text-shadow:0 0 8px var(--c)}
-.s-streak{font-size:9px;color:#ffcc00;letter-spacing:1px;margin-top:2px}
-
-#killfeed{position:fixed;top:90px;right:18px;z-index:20;display:flex;flex-direction:column;gap:6px;align-items:flex-end}
-.kf{font-size:11px;font-family:'Share Tech Mono',monospace;background:rgba(0,0,0,.8);padding:5px 13px;border-radius:7px;border-right:3px solid var(--c);animation:kfIn.2s ease;transition:opacity 1s}
-@keyframes kfIn{from{transform:translateX(18px);opacity:0}to{transform:translateX(0);opacity:1}}
-
-#winner{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:30;text-align:center;opacity:0;pointer-events:none;transition:opacity.3s}
-#winner-name{font-size:clamp(44px,9vw,82px);font-weight:900;letter-spacing:8px;text-shadow:0 0 30px currentColor,0 0 70px currentColor;line-height:1}
-#winner-sub{margin-top:14px;color:#fff;opacity:.65;font-family:'Share Tech Mono',monospace;letter-spacing:6px;font-size:13px}
-
-#bottom{position:fixed;bottom:0;left:0;right:0;z-index:20;display:flex;justify-content:center;gap:44px;padding:13px;background:linear-gradient(0deg,rgba(0,0,0,.88),transparent);color:#888;font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:2px}
-.stat span{color:#d5b2ff}
+#flash{position:fixed;inset:0;opacity:0;pointer-events:none;z-index:50;transition:opacity 0.07s}
+#event-text{position:fixed;top:20%;left:50%;transform:translateX(-50%);z-index:20;font-size:28px;font-weight:900;letter-spacing:5px;color:#fff;text-shadow:0 0 20px currentColor;opacity:0;pointer-events:none;transition:opacity 0.18s}
 </style>
 </head>
 <body>
-
+<canvas id="c"></canvas>
 <div id="flash"></div>
-
-<div id="intro">
-  <div id="intro-title">BLACKHOLE ARENA</div>
-  <div id="intro-sub">MODULAR ENGINE</div>
-  <div id="intro-orbs"></div>
-  <div id="intro-start">⚫ INITIALIZING VOID ⚫</div>
-</div>
-
-<div id="topbar">
-  <div id="logo">⚫ BLACKHOLE ARENA</div>
-  <div id="round-badge">ROUND <span id="roundNum">1</span></div>
-</div>
-
 <div id="event-text"></div>
-<div id="scoreboard"></div>
-<div id="killfeed"></div>
 
-<div id="winner">
-  <div id="winner-name"></div>
-  <div id="winner-sub">DOMINATES THE VOID</div>
-</div>
-
-<div id="bottom">
-  <div class="stat">ALIVE <span id="alive">0</span></div>
-  <div class="stat">ROUND <span id="roundStat">1</span></div>
-  <div class="stat">KILLS <span id="totalKillsEl">0</span></div>
-</div>
-
-<script type="module">
-import * as THREE from 'three';
-
-/* ── CONFIG INLINE ── */
+<script>
+/* ══════════
+   CONFIG PULITO
+══════════ */
 const CONFIG = {
-  arena: { radius: 8, friction: 1.8, restitution: 0.35 },
-  camera: { fov: 58, orbitRadius: 24, orbitSpeed: 0.0042, orbitBob: 2.5, height: 14 },
-  round: { winSlowMo: 0.12, winDuration: 5, introDuration: 3200 },
-  orb: {
-    radius: 0.58,
-    baseSpeed: 7.5,
-    buffSpeed: 11.5,
-    heavySpeed: 9.0,
-    dashPower: 24,
-    dashCooldown: 0.9,
-    noEdgeDash: 6.0,
-    edgeAvoidFrom: 4.6
-  },
-  visual: {
-    bgColor: 0x020008, fogColor: 0x12001c, fogDensity: 0.024,
-    floorColor: 0x140018, floorEmissive: 0xaa00ff, floorEmissiveInt: 0.32,
-    rimColor: 0xdd00ff, dangerColor: 0xff0044,
-    vortex1Color: 0xcc44ff, vortex2Color: 0x8800aa,
-  },
+  arena: { radius: 8 },
   players: [
-    { name: 'ILLUSORE', color: 0xdd44ff, power: 'mirage', cd: 5.0 },
-    { name: 'BATTERIO', color: 0x66ff99, power: 'hive', cd: 5.0 },
+    { name: 'ILLUSORE', color: '#dd44ff', power: 'mirage', cd: 4.2 },
+    { name: 'BATTERIO', color: '#66ff99', power: 'hive', cd: 4.2 },
   ],
-  powers: {
-    mirage: { label: '🟣 PHASE WALK', color: '#dd44ff' },
-    hive: { label: '🦠 ABSORB SWARM', color: '#66ff99' },
-  },
-  spawns: [ [-4.8, 0], [4.8, 0] ],
 };
 
-const C=CONFIG, CA=C.arena, CC=C.camera, CR=C.round, CO=C.orb, CV=C.visual, PW=C.powers;
-const HALF=CA.radius;
-
-/* ── FREEZE VARS ── */
+/* ══════════
+   SETUP
+══════════ */
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, CX, CY, AR;
 let freezeT = 0;
 let flashA = 0;
-let slowMo = 1;
 
-/* ── SCENE ── */
-const scene=new THREE.Scene();
-scene.background=new THREE.Color(CV.bgColor);
-scene.fog=new THREE.FogExp2(CV.fogColor,CV.fogDensity);
+function resize(){
+  W = canvas.width = innerWidth;
+  H = canvas.height = innerHeight;
+  CX = W / 2;
+  CY = H / 2;
+  AR = Math.min(W, H) * 0.4;
+}
+resize();
+window.addEventListener('resize', resize);
 
-const camera=new THREE.PerspectiveCamera(CC.fov,innerWidth/innerHeight,.1,200);
-camera.position.set(0,CC.height,CC.orbitRadius);
-
-const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
-renderer.setPixelRatio(Math.min(devicePixelRatio,2));
-renderer.setSize(innerWidth,innerHeight);
-renderer.shadowMap.enabled=true;
-renderer.shadowMap.type=THREE.PCFSoftShadowMap;
-document.body.appendChild(renderer.domElement);
-
-/* ── LIGHTS ── */
-scene.add(new THREE.AmbientLight(0x441166,1.6));
-scene.add(new THREE.HemisphereLight(0xaa66ff,0x110011,2));
-const sun=new THREE.DirectionalLight(0xffffff,1.5);
-sun.position.set(10,20,10); sun.castShadow=true;
-sun.shadow.mapSize.set(1024,1024);
-sun.shadow.camera.left=sun.shadow.camera.bottom=-22;
-sun.shadow.camera.right=sun.shadow.camera.top=22;
-scene.add(sun);
-
-/* ── ARENA VISUAL ── */
-const floorMesh=new THREE.Mesh(
-  new THREE.CircleGeometry(HALF,72),
-  new THREE.MeshStandardMaterial({color:CV.floorColor,emissive:CV.floorEmissive,emissiveIntensity:CV.floorEmissiveInt,metalness:.7,roughness:.15})
-);
-floorMesh.rotation.x=-Math.PI/2; floorMesh.receiveShadow=true; scene.add(floorMesh);
-
-[.35,.65,.88].forEach(f=>{
-  const m=new THREE.Mesh(
-    new THREE.TorusGeometry(HALF*f,.025,8,80),
-    new THREE.MeshBasicMaterial({color:0x6600bb,transparent:true,opacity:.35})
-  );
-  m.rotation.x=Math.PI/2; scene.add(m);
-});
-
-const rimRing=new THREE.Mesh(
-  new THREE.TorusGeometry(HALF,.14,16,120),
-  new THREE.MeshBasicMaterial({color:CV.rimColor})
-);
-rimRing.rotation.x=Math.PI/2; scene.add(rimRing);
-
-const dangerRing=new THREE.Mesh(
-  new THREE.TorusGeometry(HALF+.6,.08,8,120),
-  new THREE.MeshBasicMaterial({color:CV.dangerColor,transparent:true,opacity:.35})
-);
-dangerRing.rotation.x=Math.PI/2; scene.add(dangerRing);
-
-/* ── STATE ── */
-const totalKills =C.players.map(()=>0);
-const totalStreak =C.players.map(()=>0);
-let orbs=[];
-let round=1,roundWon=false,roundTimer=0;
-
-const hex=c=>'#'+c.toString(16).padStart(6,'0');
-
-/* ── INTRO ── */
-const introOrbs=document.getElementById('intro-orbs');
-C.players.forEach(p=>{
-  const d=document.createElement('div');
-  d.className='intro-dot'; d.style.background=hex(p.color); d.style.color=hex(p.color);
-  introOrbs.appendChild(d);
-});
-setTimeout(()=>{
-  const el=document.getElementById('intro');
-  el.style.opacity='0'; setTimeout(()=>el.style.display='none',900);
-},CR.introDuration);
-
-/* ── UI HELPERS ── */
-const flashEl=document.getElementById('flash');
-function doFlash(c='#fff',v=.7){flashEl.style.background=c;flashEl.style.opacity=v;setTimeout(()=>flashEl.style.opacity='0',90);}
-function cameraShake(s=.3){camera.position.x+=(Math.random()-.5)*s;camera.position.y+=(Math.random()-.5)*s*.5;}
+/* ══════════
+   UI HELPERS
+══════════ */
+const flashEl = document.getElementById('flash');
+function doFlash(c='#fff',v=.7){
+  flashEl.style.background=c;
+  flashEl.style.opacity=v;
+  setTimeout(()=>flashEl.style.opacity='0',90);
+}
 
 const evEl=document.getElementById('event-text');
 let evTimer=0;
-function showEvent(t,c='#fff',d=1.6){evEl.textContent=t;evEl.style.color=c;evEl.style.textShadow=`0 0 20px ${c}`;evEl.style.opacity='1';evTimer=d;}
-
-const kfEl=document.getElementById('killfeed');
-function addKillFeed(kName,kCol,vName,vCol){
-  const d=document.createElement('div');
-  d.className='kf'; d.style.setProperty('--c',hex(kCol));
-  d.innerHTML=`<span style="color:${hex(kCol)}">${kName}</span> <span style="color:#555">⊗</span> <span style="color:${hex(vCol)}">${vName}</span>`;
-  kfEl.appendChild(d);
-  setTimeout(()=>{d.style.opacity='0';setTimeout(()=>d.remove(),1100)},3200);
-  while(kfEl.children.length>5) kfEl.removeChild(kfEl.firstChild);
+function showEvent(t,c='#fff',d=1.6){
+  evEl.textContent=t;
+  evEl.style.color=c;
+  evEl.style.textShadow=`0 0 20px ${c}`;
+  evEl.style.opacity='1';
+  evTimer=d;
 }
 
-const sbEl=document.getElementById('scoreboard');
-function updateSB(){
-  sbEl.innerHTML='';
-  orbs.forEach(o=>{
-    const p=C.players[o.id];
-    const pw=PW[p.power];
-    const row=document.createElement('div');
-    row.className='s-row'+(o.alive?'':' dead');
-    row.style.setProperty('--c',hex(p.color));
-    const cdPct=o.alive?Math.max(0,1-o.cd/p.cd):0;
-    const bar='█'.repeat(Math.round(cdPct*5))+'░'.repeat(5-Math.round(cdPct*5));
-    row.innerHTML=`
-      <div class="s-name">${p.name}</div>
-      <div class="s-power">${pw.label} ${bar}</div>
-      <div class="s-kills">${totalKills[o.id]}</div>`;
-    sbEl.appendChild(row);
-  });
-}
-
-/* ── ORB CLASS - MOTORE 2D PURO ── */
+/* ══════════
+   ORB CLASS
+══════════ */
 class Orb {
-  constructor(id, x, z){
+  constructor(id, x, y){
     this.id = id;
     this.x = x;
-    this.z = z;
+    this.y = y;
     this.vx = 0;
-    this.vz = 0;
-    this.alive = true;
+    this.vy = 0;
 
-    const p = C.players[id];
+    const p = CONFIG.players[id];
     this.color = p.color;
-    this.style = p.power === 'mirage'? 'berserker' : 'trickster';
-    this.cd = p.cd*(.3+Math.random()*.4);
-    this.buff = 0;
-    this.dash = CO.dashCooldown*(.4+Math.random()*.5);
+    this.power = p.power;
+    this.cd = p.cd * (.3 + Math.random()*.4);
+    this.maxCd = p.cd;
 
-    this.trailPts = Array(32).fill(null).map(()=>new THREE.Vector3());
-    this.trailIdx = 0;
-    this.ai_t = Math.random()*.15;
+    this.style = p.power === 'mirage'? 'berserker' : 'trickster';
+    this.trail = [];
+    this.pulseT = Math.random()*Math.PI*2;
+    this.squishX = 1;
+    this.squishY = 1;
 
     this.state = 'idle';
     this.stateT = 0;
@@ -263,24 +99,14 @@ class Orb {
     this.feintDir= 1;
     this.feintAmt= 0;
 
-    // Mesh Three.js
-    this.mesh = new THREE.Mesh(
-      new THREE.SphereGeometry(CO.radius,32,32),
-      new THREE.MeshStandardMaterial({color:p.color,emissive:p.color,emissiveIntensity:.9,roughness:.18,metalness:.2})
-    );
-    this.mesh.castShadow=true;
-    this.mesh.position.set(x,1,z);
-    scene.add(this.mesh);
-
-    // Trail
-    const tGeo=new THREE.BufferGeometry();
-    tGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(32*3),3));
-    this.trailMesh=new THREE.Line(tGeo,new THREE.LineBasicMaterial({color:p.color,transparent:true,opacity:.55}));
-    scene.add(this.trailMesh);
+    this.intangible = false;
+    this.intangibleTime = 0;
+    this.swarm = [];
+    this.opacity = 1;
   }
 
-  get r(){ return CO.radius; }
-  get baseSpeed(){ return CO.baseSpeed; }
+  get r(){ return AR * 0.075; }
+  get baseSpeed(){ return AR * 1.8; }
 
   get speed(){
     const bs = this.baseSpeed;
@@ -295,11 +121,40 @@ class Orb {
 
   setState(s, dur){ this.state=s; this.stateT=dur; }
 
-  aiBerserker(dt, ex, ez){
+  fireMirage(enemy){
+    showEvent('🟣 PHASE WALK', this.color, 1.2);
+    doFlash(this.color, 0.28);
+    this.intangible = true;
+    this.intangibleTime = 0;
+    this.opacity = 0.35;
+    const dx = enemy.x - this.x;
+    const dy = enemy.y - this.y;
+    const dist = Math.hypot(dx,dy);
+    if(dist < this.r * 4){
+      enemy.vx += (dx/dist) * AR * 1.2;
+      enemy.vy += (dy/dist) * AR * 1.2;
+    }
+  }
+
+  fireHive(){
+    showEvent('🦠 ABSORB SWARM', this.color, 1.2);
+    doFlash(this.color, 0.28);
+    for(let i=0; i<3; i++){
+      const angle = (i/3) * Math.PI*2;
+      this.swarm.push({
+        angle: angle,
+        dist: this.r * 1.8,
+        speed: 0.05,
+        life: 5
+      });
+    }
+  }
+
+  aiBerserker(dt, ex, ey){
     this.stateT -= dt;
-    const dx = ex - this.x, dz = ez - this.z;
-    const dist = Math.hypot(dx,dz)||1;
-    const dn = dist / HALF;
+    const dx = ex - this.x, dy = ey - this.y;
+    const dist = Math.hypot(dx,dy)||1;
+    const dn = dist / AR;
     this.anger = Math.min(1,.5);
 
     if(this.stateT<=0){
@@ -308,38 +163,43 @@ class Orb {
       else this.setState('chase',.3);
     }
 
-    let fx=0, fz=0;
+    let fx=0, fy=0;
     if(this.state==='chase'){
       fx = (dx/dist)*this.speed;
-      fz = (dz/dist)*this.speed;
+      fy = (dy/dist)*this.speed;
     } else if(this.state==='charge'){
       fx = (dx/dist)*this.speed*1.5;
-      fz = (dz/dist)*this.speed*1.5;
+      fy = (dy/dist)*this.speed*1.5;
     } else if(this.state==='evade'){
-      fx = -(dz/dist)*this.speed*.8;
-      fz = (dx/dist)*this.speed*.8;
+      fx = -(dy/dist)*this.speed*.8;
+      fy = (dx/dist)*this.speed*.8;
     }
 
-    const radial=Math.hypot(this.x,this.z);
-    const edgeT = Math.max(0,(radial-CO.edgeAvoidFrom)/(HALF-CO.edgeAvoidFrom));
+    const myR = Math.hypot(this.x-CX, this.y-CY);
+    const edgeT = Math.max(0,(myR - AR*.8)/(AR*.2));
     if(edgeT>0){
-      fx += ((-this.x)/HALF)*this.speed*edgeT*2;
-      fz += ((-this.z)/HALF)*this.speed*edgeT*2;
+      fx += ((CX-this.x)/AR)*this.speed*edgeT*2;
+      fy += ((CY-this.y)/AR)*this.speed*edgeT*2;
     }
 
     const acc = this.state==='charge'? 20 : 10;
     this.vx += (fx - this.vx)*Math.min(1, acc*dt);
-    this.vz += (fz - this.vz)*Math.min(1, acc*dt);
+    this.vy += (fy - this.vy)*Math.min(1, acc*dt);
+
+    const s = Math.hypot(this.vx,this.vy);
+    const t = Math.min(1, s/(this.speed*1.3));
+    this.squishX = 1 - t*.15;
+    this.squishY = 1 + t*.15;
   }
 
-  aiTrickster(dt, ex, ez){
+  aiTrickster(dt, ex, ey){
     this.stateT -= dt;
-    const dx = ex - this.x, dz = ez - this.z;
-    const dist = Math.hypot(dx,dz)||1;
-    const dn = dist / HALF;
-    const radial = Math.hypot(this.x,this.z);
+    const dx = ex - this.x, dy = ey - this.y;
+    const dist = Math.hypot(dx,dy)||1;
+    const dn = dist / AR;
+    const myR = Math.hypot(this.x-CX, this.y-CY);
 
-    this.fear = Math.max(0,(radial - HALF*.7)/(HALF*.3));
+    this.fear = Math.max(0,(myR - AR*.7)/(AR*.3));
 
     if(this.stateT<=0){
       if(this.fear>.6) this.setState('evade',.3);
@@ -353,213 +213,208 @@ class Orb {
       }
     }
 
-    let fx=0, fz=0;
+    let fx=0, fy=0;
     if(this.state==='orbit'){
-      const ang = Math.atan2(this.z, this.x);
+      const ang = Math.atan2(this.y-CY, this.x-CX);
       fx = -Math.sin(ang)*this.speed*.7;
-      fz = Math.cos(ang)*this.speed*.7;
+      fy = Math.cos(ang)*this.speed*.7;
     } else if(this.state==='feint'){
-      fx = (-dz/dist)*this.feintDir*this.speed*this.feintAmt;
-      fz = (dx/dist)*this.feintDir*this.speed*this.feintAmt;
+      fx = (-dy/dist)*this.feintDir*this.speed*this.feintAmt;
+      fy = (dx/dist)*this.feintDir*this.speed*this.feintAmt;
     } else if(this.state==='charge'){
       fx = (dx/dist)*this.speed*1.3;
-      fz = (dz/dist)*this.speed*1.3;
+      fy = (dy/dist)*this.speed*1.3; // ← BUG FIX: era dz
     } else if(this.state==='evade'){
-      fx = -((this.x)/HALF)*this.speed*1.5;
-      fz = -((this.z)/HALF)*this.speed*1.5;
+      fx = -((this.x-CX)/AR)*this.speed*1.5;
+      fy = -((this.y-CY)/AR)*this.speed*1.5;
     }
 
     const acc=this.state==='charge'?18:8;
     this.vx+=(fx-this.vx)*Math.min(1,acc*dt);
-    this.vz+=(fz-this.vz)*Math.min(1,acc*dt);
+    this.vy+=(fy-this.vy)*Math.min(1,acc*dt);
+
+    const s=Math.hypot(this.vx,this.vy);
+    const t=Math.min(1,s/(this.speed*1.2));
+    this.squishX=1-t*.12;
+    this.squishY=1+t*.12;
   }
 
   step(dt, enemy){
-    if(!this.alive) return;
+    this.pulseT += dt*3;
+    this.cd = Math.max(0, this.cd-dt);
 
-    this.cd=Math.max(0,this.cd-dt);
+    if(this.cd <= 0){
+      if(this.power === 'mirage') this.fireMirage(enemy);
+      if(this.power === 'hive') this.fireHive();
+      this.cd = this.maxCd;
+    }
 
-    if(this.style==='berserker') this.aiBerserker(dt, enemy.x, enemy.z);
-    else this.aiTrickster(dt, enemy.x, enemy.z);
+    if(this.intangible){
+      this.intangibleTime += dt;
+      if(this.intangibleTime >= 1.2){
+        this.intangible = false;
+        this.opacity = 1;
+      }
+    }
 
-    const spd = Math.hypot(this.vx,this.vz);
+    this.swarm = this.swarm.filter(s=>{
+      s.angle += s.speed;
+      s.life -= dt;
+      return s.life > 0;
+    });
+
+    if(this.style==='berserker') this.aiBerserker(dt, enemy.x, enemy.y);
+    else this.aiTrickster(dt, enemy.x, enemy.y);
+
+    if(this.intangible) return;
+
+    const spd = Math.hypot(this.vx,this.vy);
     const maxSpd = this.speed * 2;
-    if(spd>maxSpd){ this.vx=this.vx/spd*maxSpd; this.vz=this.vz/spd*maxSpd; }
+    if(spd>maxSpd){ this.vx=this.vx/spd*maxSpd; this.vy=this.vy/spd*maxSpd; }
 
     this.x += this.vx*dt;
-    this.z += this.vz*dt;
+    this.y += this.vy*dt;
 
-    // Bordo arena
-    const distFromCenter = Math.hypot(this.x,this.z);
-    if(distFromCenter > HALF - this.r){
-      const nx = this.x/distFromCenter;
-      const nz = this.z/distFromCenter;
-      const dot = this.vx*nx + this.vz*nz;
+    this.trail.push({x:this.x,y:this.y});
+    if(this.trail.length>40) this.trail.shift();
+
+    const distFromCenter = Math.hypot(this.x-CX, this.y-CY);
+    if(distFromCenter > AR - this.r){
+      const nx = (this.x-CX)/distFromCenter;
+      const ny = (this.y-CY)/distFromCenter;
+      const dot = this.vx*nx + this.vy*ny;
       this.vx -= 2*dot*nx*0.8;
-      this.vz -= 2*dot*nz*0.8;
-      this.x = nx*(HALF-this.r);
-      this.z = nz*(HALF-this.r);
+      this.vy -= 2*dot*ny*0.8;
+      this.x = CX + nx*(AR-this.r);
+      this.y = CY + ny*(AR-this.r);
     }
-
-    // Update mesh
-    this.mesh.position.set(this.x, 1, this.z);
-
-    // Trail
-    this.trailPts[this.trailIdx].set(this.x, 1, this.z);
-    this.trailIdx=(this.trailIdx+1)%this.trailPts.length;
-    const arr=this.trailMesh.geometry.attributes.position.array;
-    for(let t=0;t<this.trailPts.length;t++){
-      arr[t*3]=this.trailPts[t].x;
-      arr[t*3+1]=this.trailPts[t].y;
-      arr[t*3+2]=this.trailPts[t].z;
-    }
-    this.trailMesh.geometry.attributes.position.needsUpdate=true;
   }
 
-  destroy(){
-    this.alive=false;
-    scene.remove(this.mesh);
-    scene.remove(this.trailMesh);
+  draw(){
+    const r = this.r * (1 + Math.sin(this.pulseT)*.04);
+    const ang = Math.atan2(this.vy,this.vx);
+
+    ctx.save();
+    for(let i=1;i<this.trail.length;i++){
+      const t = i/this.trail.length;
+      ctx.beginPath();
+      ctx.moveTo(this.trail[i-1].x,this.trail[i-1].y);
+      ctx.lineTo(this.trail[i].x,this.trail[i].y);
+      ctx.strokeStyle = this.color;
+      ctx.lineWidth = r*.3 * t;
+      ctx.globalAlpha = t *.4 * this.opacity;
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    this.swarm.forEach(s=>{
+      const sx = this.x + Math.cos(s.angle) * s.dist;
+      const sy = this.y + Math.sin(s.angle) * s.dist;
+      ctx.save();
+      ctx.globalAlpha = s.life/5 * this.opacity;
+      ctx.fillStyle = this.color;
+      ctx.beginPath();
+      ctx.arc(sx, sy, r*0.3, 0, Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    });
+
+    ctx.save();
+    ctx.globalAlpha = this.opacity;
+    ctx.translate(this.x, this.y);
+    ctx.rotate(ang);
+    ctx.scale(this.squishX, this.squishY);
+    ctx.rotate(-ang);
+
+    const grd=ctx.createRadialGradient(-r*.3,-r*.3,r*.05,0,0,r);
+    grd.addColorStop(0,'#fff');
+    grd.addColorStop(.2,this.color);
+    grd.addColorStop(1,'rgba(0,0,0,.8)');
+    ctx.fillStyle=grd;
+    ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.fill();
+    ctx.restore();
   }
 }
 
-/* ── COLLISION HANDLER ── */
 function handleCollision(o0, o1){
-  if(!o0.alive||!o1.alive) return;
-
-  const dx=o1.x-o0.x, dz=o1.z-o0.z;
-  const d=Math.hypot(dx,dz)||1;
+  if(o0.intangible || o1.intangible) return;
+  const dx=o1.x-o0.x, dy=o1.y-o0.y;
+  const d=Math.hypot(dx,dy)||1;
   const minD=o0.r+o1.r;
   if(d>=minD) return;
-
-  const nx=dx/d, nz=dz/d;
+  const nx=dx/d, ny=dy/d;
   const overlap=minD-d;
-
-  // Separazione
   o0.x-=nx*overlap*.5;
-  o0.z-=nz*overlap*.5;
+  o0.y-=ny*overlap*.5;
   o1.x+=nx*overlap*.5;
-  o1.z+=nz*overlap*.5;
-
-  // Impulso
-  const dot=o0.vx*nx+o0.vz*nz;
+  o1.y+=ny*overlap*.5;
+  const dot=o0.vx*nx+o0.vy*ny;
   o0.vx-=dot*nx*1.6;
-  o0.vz-=dot*nz*1.6;
-
-  const dot2=o1.vx*nx+o1.vz*nz;
+  o0.vy-=dot*ny*1.6;
+  const dot2=o1.vx*nx+o1.vy*ny;
   o1.vx-=dot2*nx*1.6;
-  o1.vz-=dot2*nz*1.6;
-
-  // FREEZE + FLASH
+  o1.vy-=dot2*ny*1.6;
   freezeT = 0.06;
-  doFlash('#fff', 0.4);
-  cameraShake(0.8);
+  flashA = 0.3;
+  doFlash('#fff', 0.3);
 }
 
-/* ── ROUND ── */
-function clean(){
-  orbs.forEach(o=>o.destroy());
+function drawArena(){
+  ctx.fillStyle='#0a0a0a';
+  ctx.fillRect(0,0,W,H);
+  const grd = ctx.createLinearGradient(CX-AR, CY-AR*0.5, CX+AR, CY+AR*0.5);
+  grd.addColorStop(0,'#1a0025');
+  grd.addColorStop(0.5,'#3d0066');
+  grd.addColorStop(1,'#1a0025');
+  ctx.fillStyle=grd;
+  ctx.beginPath();
+  ctx.arc(CX,CY,AR,0,Math.PI*2);
+  ctx.fill();
+  ctx.strokeStyle='#dd44ff';
+  ctx.lineWidth=3;
+  ctx.globalAlpha=0.6;
+  ctx.shadowBlur=20;
+  ctx.shadowColor='#dd44ff';
+  ctx.beginPath(); ctx.arc(CX,CY,AR,0,Math.PI*2); ctx.stroke();
+  ctx.globalAlpha=1;
+  ctx.shadowBlur=0;
+}
+
+let orbs=[];
+function init(){
   orbs=[];
+  const ox = AR*.5;
+  orbs.push(new Orb(0, CX-ox, CY));
+  orbs.push(new Orb(1, CX+ox, CY));
+  orbs[0].vx= AR*.1; orbs[1].vx=-AR*.1;
 }
 
-function spawnRound(){
-  clean();
-  winnerEl.style.opacity='0';
-  roundWon=false; slowMo=1; roundTimer=0;
-
-  const [sx,sz]=C.spawns[0];
-  const [sx2,sz2]=C.spawns[1];
-  orbs.push(new Orb(0, sx, sz));
-  orbs.push(new Orb(1, sx2, sz2));
-  orbs[0].vx= CO.baseSpeed*0.5;
-  orbs[1].vx=-CO.baseSpeed*0.5;
-
-  document.getElementById('roundNum').textContent=round;
-  document.getElementById('roundStat').textContent=round;
-  updateSB();
-}
-
-/* ── MAIN LOOP ── */
-const clock=new THREE.Clock();
-let camA=0,sbTimer=0;
-spawnRound();
-
-function loop(){
+let last=0;
+function loop(ts){
   requestAnimationFrame(loop);
-  const raw=Math.min(.033,clock.getDelta());
-
-  // FREEZE FRAME
-  if(freezeT>0){
-    freezeT-=raw;
-    slowMo=0.03;
-  } else {
-    slowMo=roundWon?CR.winSlowMo:1;
+  const raw = Math.min(.033, (ts-last)/1000); last=ts;
+  let dt=raw;
+  if(freezeT>0){ freezeT-=raw; dt=raw*0.03; }
+  if(evTimer>0){evTimer-=raw; if(evTimer<=0)evEl.style.opacity='0';}
+  const [o0,o1]=orbs;
+  o0.step(dt,o1);
+  o1.step(dt,o0);
+  handleCollision(o0,o1);
+  drawArena();
+  o0.draw();
+  o1.draw();
+  if(flashA>0){
+    ctx.save();
+    ctx.globalAlpha=flashA*0.5;
+    ctx.fillStyle='#fff';
+    ctx.fillRect(0,0,W,H);
+    ctx.restore();
+    flashA=Math.max(0, flashA-raw*8);
   }
-
-  const dt=raw*slowMo;
-
-  if(evTimer>0){evTimer-=raw;if(evTimer<=0)evEl.style.opacity='0';}
-
-  // Camera orbit
-  camA+=CC.orbitSpeed*60*raw;
-  const camR=CC.orbitRadius+Math.sin(camA*.28)*2;
-  camera.position.x=Math.sin(camA)*camR;
-  camera.position.z=Math.cos(camA)*camR;
-  camera.position.y=CC.height+Math.sin(camA*.42)*CC.orbitBob;
-  camera.lookAt(0,1,0);
-
-  // Update orbs
-  if(orbs.length===2){
-    const [o0,o1]=orbs;
-    o0.step(dt,o1);
-    o1.step(dt,o0);
-    handleCollision(o0,o1);
-  }
-
-  // Check eliminazioni
-  const toKill=[];
-  orbs.forEach(o=>{
-    if(!o.alive) return;
-    if(o.x*o.x+o.z*o.z>HALF*HALF) toKill.push(o);
-  });
-  toKill.forEach(v=>{
-    doFlash('#fff',.25); cameraShake(.9);
-    v.destroy();
-    let killer=null;
-    orbs.forEach(k=>{if(k.alive&&k!==v)killer=k;});
-    if(killer){totalKills[killer.id]++;addKillFeed(killer.name,C.players[killer.id].color,v.name,C.players[v.id].color);}
-    document.getElementById('totalKillsEl').textContent=totalKills.reduce((a,b)=>a+b,0);
-  });
-
-  const alive=orbs.filter(o=>o.alive);
-  document.getElementById('alive').textContent=`${alive.length}/${C.players.length}`;
-
-  if(!roundWon){
-    if(alive.length===1){
-      roundWon=true;
-      const w=alive[0];
-      totalStreak[w.id]++; totalStreak.forEach((_,i)=>{if(i!==w.id)totalStreak[i]=0;});
-      const p=C.players[w.id];
-      winnerName.textContent=p.name+' WINS!';
-      winnerName.style.color=hex(p.color);
-      winnerEl.style.opacity='1';
-      doFlash(hex(p.color),.6); cameraShake(1.5);
-      slowMo=CR.winSlowMo;
-    } else if(alive.length===0){
-      roundWon=true; slowMo=.3;
-    }
-  }
-  if(roundWon){
-    roundTimer+=raw;
-    if(roundTimer>CR.winDuration){winnerEl.style.opacity='0';round++;spawnRound();}
-  }
-
-  sbTimer+=raw; if(sbTimer>.22){sbTimer=0;updateSB();}
-  renderer.render(scene,camera);
 }
 
-loop();
-addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+init();
+requestAnimationFrame(t=>{ last=t; loop(t); });
 </script>
 </body>
 </html>
