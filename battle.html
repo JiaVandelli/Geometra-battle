@@ -3,55 +3,146 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"/>
-<title>ILLUSORE vs BATTERIO</title>
+<title>BLACKHOLE ARENA</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-html,body{width:100%;height:100%;overflow:hidden;background:#0a0a0a}
-canvas{position:fixed;inset:0;width:100%;height:100%}
+html,body{width:100%;height:100%;overflow:hidden;background:#08080f;font-family:'Courier New',monospace}
+
+/* Arena inclinata con prospettiva 3D */
+#arena-wrap{
+  position:fixed;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  perspective:900px;
+}
+#arena-inner{
+  position:relative;
+  transform: rotateX(52deg) rotateZ(0deg);
+  transform-style:preserve-3d;
+  /* ombra sotto l'arena per dare profondità */
+  filter: drop-shadow(0 60px 80px rgba(180,0,255,0.35));
+}
+canvas{display:block;}
 
 #flash{position:fixed;inset:0;opacity:0;pointer-events:none;z-index:50;transition:opacity 0.07s}
-#event-text{position:fixed;top:20%;left:50%;transform:translateX(-50%);z-index:20;font-size:28px;font-weight:900;letter-spacing:5px;color:#fff;text-shadow:0 0 20px currentColor;opacity:0;pointer-events:none;transition:opacity 0.18s}
+#event-text{
+  position:fixed;top:16%;left:50%;transform:translateX(-50%);
+  z-index:20;font-size:22px;font-weight:900;letter-spacing:4px;
+  color:#fff;text-shadow:0 0 20px currentColor;
+  opacity:0;pointer-events:none;transition:opacity 0.18s;
+  white-space:nowrap;
+}
+
+/* HUD */
+#hud{
+  position:fixed;top:0;left:0;right:0;z-index:30;
+  display:flex;align-items:flex-start;justify-content:space-between;
+  padding:12px 16px;pointer-events:none;
+}
+.card{
+  background:rgba(10,10,20,0.85);
+  border:1px solid rgba(255,255,255,0.12);
+  border-radius:10px;
+  padding:8px 12px;
+  min-width:130px;
+  backdrop-filter:blur(4px);
+}
+.card-name{font-size:11px;letter-spacing:3px;font-weight:900;margin-bottom:4px}
+.card-power{font-size:9px;letter-spacing:2px;opacity:0.7;margin-bottom:6px}
+.cd-bar-bg{width:100%;height:5px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden}
+.cd-bar{height:100%;border-radius:3px;transition:width 0.1s linear;width:0%}
+
+.center-badge{
+  background:rgba(10,10,20,0.85);
+  border:1px solid rgba(255,255,255,0.12);
+  border-radius:10px;
+  padding:8px 16px;
+  font-size:10px;letter-spacing:3px;
+  text-align:center;color:#fff;
+  backdrop-filter:blur(4px);
+}
+
+/* Stelle di sfondo */
+#stars{position:fixed;inset:0;z-index:0;overflow:hidden;}
 </style>
 </head>
 <body>
-<canvas id="c"></canvas>
+<div id="stars"></div>
+
+<div id="hud">
+  <div class="card" id="card0">
+    <div class="card-name" style="color:#dd44ff">⚡ ILLUSORE</div>
+    <div class="card-power" style="color:#dd44ff">PHASE WALK</div>
+    <div class="cd-bar-bg"><div class="cd-bar" id="cd0" style="background:#dd44ff"></div></div>
+  </div>
+  <div class="center-badge" id="round-badge">ROUND 1</div>
+  <div class="card" id="card1">
+    <div class="card-name" style="color:#66ff99">🦠 BATTERIO</div>
+    <div class="card-power" style="color:#66ff99">ABSORB SWARM</div>
+    <div class="cd-bar-bg"><div class="cd-bar" id="cd1" style="background:#66ff99"></div></div>
+  </div>
+</div>
+
+<div id="arena-wrap">
+  <div id="arena-inner">
+    <canvas id="c"></canvas>
+  </div>
+</div>
+
 <div id="flash"></div>
 <div id="event-text"></div>
 
 <script>
-/* ══════════
-   CONFIG PULITO
-══════════ */
-const CONFIG = {
-  arena: { radius: 8 },
-  players: [
-    { name: 'ILLUSORE', color: '#dd44ff', power: 'mirage', cd: 4.2 },
-    { name: 'BATTERIO', color: '#66ff99', power: 'hive', cd: 4.2 },
-  ],
-};
+/* ══════════════════════════════
+   STELLE DI SFONDO
+══════════════════════════════ */
+(function(){
+  const s=document.getElementById('stars');
+  for(let i=0;i<120;i++){
+    const d=document.createElement('div');
+    const sz=Math.random()*2+0.5;
+    d.style.cssText=`position:absolute;width:${sz}px;height:${sz}px;
+      background:#fff;border-radius:50%;opacity:${Math.random()*0.5+0.1};
+      left:${Math.random()*100}%;top:${Math.random()*100}%;
+      animation:twinkle ${2+Math.random()*3}s ease-in-out infinite alternate;
+      animation-delay:${Math.random()*3}s;`;
+    s.appendChild(d);
+  }
+  const style=document.createElement('style');
+  style.textContent='@keyframes twinkle{from{opacity:0.1}to{opacity:0.6}}';
+  document.head.appendChild(style);
+})();
 
-/* ══════════
-   SETUP
-══════════ */
+/* ══════════════════════════════
+   SETUP CANVAS
+══════════════════════════════ */
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
 let W, H, CX, CY, AR;
 let freezeT = 0;
 let flashA = 0;
+let round = 1;
 
 function resize(){
-  W = canvas.width = innerWidth;
-  H = canvas.height = innerHeight;
+  // Canvas quadrato centrato, dimensione basata sul minimo schermo
+  const size = Math.min(innerWidth * 0.95, innerHeight * 0.6);
+  W = canvas.width = size;
+  H = canvas.height = size;
   CX = W / 2;
   CY = H / 2;
-  AR = Math.min(W, H) * 0.4;
+  AR = size * 0.44;
+  // Aggiusta wrapper
+  document.getElementById('arena-inner').style.width = size+'px';
+  document.getElementById('arena-inner').style.height = size+'px';
 }
 resize();
-window.addEventListener('resize', resize);
+window.addEventListener('resize', ()=>{ resize(); init(); });
 
-/* ══════════
+/* ══════════════════════════════
    UI HELPERS
-══════════ */
+══════════════════════════════ */
 const flashEl = document.getElementById('flash');
 function doFlash(c='#fff',v=.7){
   flashEl.style.background=c;
@@ -59,19 +150,28 @@ function doFlash(c='#fff',v=.7){
   setTimeout(()=>flashEl.style.opacity='0',90);
 }
 
-const evEl=document.getElementById('event-text');
-let evTimer=0;
+const evEl = document.getElementById('event-text');
+let evTimer = 0;
 function showEvent(t,c='#fff',d=1.6){
   evEl.textContent=t;
   evEl.style.color=c;
-  evEl.style.textShadow=`0 0 20px ${c}`;
+  evEl.style.textShadow=`0 0 24px ${c}`;
   evEl.style.opacity='1';
   evTimer=d;
 }
 
-/* ══════════
+function updateHUD(){
+  const [o0,o1]=orbs;
+  const p0=Math.min(1,(o0.maxCd-o0.cd)/o0.maxCd)*100;
+  const p1=Math.min(1,(o1.maxCd-o1.cd)/o1.maxCd)*100;
+  document.getElementById('cd0').style.width=p0+'%';
+  document.getElementById('cd1').style.width=p1+'%';
+  document.getElementById('round-badge').textContent='ROUND '+round;
+}
+
+/* ══════════════════════════════
    ORB CLASS
-══════════ */
+══════════════════════════════ */
 class Orb {
   constructor(id, x, y){
     this.id = id;
@@ -80,245 +180,388 @@ class Orb {
     this.vx = 0;
     this.vy = 0;
 
-    const p = CONFIG.players[id];
-    this.color = p.color;
-    this.power = p.power;
-    this.cd = p.cd * (.3 + Math.random()*.4);
-    this.maxCd = p.cd;
+    this.color   = id===0 ? '#dd44ff' : '#66ff99';
+    this.power   = id===0 ? 'mirage'  : 'hive';
+    this.maxCd   = id===0 ? 4.0       : 5.5;
+    this.cd      = this.maxCd * (0.3 + Math.random()*0.4);
 
-    this.style = p.power === 'mirage'? 'berserker' : 'trickster';
-    this.trail = [];
-    this.pulseT = Math.random()*Math.PI*2;
+    this.trail   = [];
+    this.pulseT  = Math.random()*Math.PI*2;
     this.squishX = 1;
     this.squishY = 1;
 
-    this.state = 'idle';
-    this.stateT = 0;
-    this.anger = 0;
-    this.fear = 0;
-    this.feintDir= 1;
-    this.feintAmt= 0;
+    // Stato macchina
+    this.state   = 'idle';
+    this.stateT  = 0;
 
-    this.intangible = false;
+    // Phase walk
+    this.intangible     = false;
     this.intangibleTime = 0;
+    this.opacity        = 1;
+    this.phaseTarget    = null; // punto dove riapparire
+
+    // Swarm (Batterio)
     this.swarm = [];
-    this.opacity = 1;
+    this.swarmCount = 0; // quanti minion attivi
+
+    // Variabili AI
+    this.feintDir = 1;
+    this.anger    = 0;
   }
 
-  get r(){ return AR * 0.075; }
-  get baseSpeed(){ return AR * 1.8; }
+  get r(){ return AR * 0.08; }
+
+  /* Velocità base — Illusore è naturalmente più veloce */
+  get baseSpeed(){
+    return this.id===0 ? AR * 2.2 : AR * 1.4;
+  }
 
   get speed(){
     const bs = this.baseSpeed;
-    if(this.style==='berserker'){
-      if(this.state==='charge') return bs * (2.4 + this.anger*.5);
-      return bs * (1.05 + this.anger*.2);
+    if(this.id===0){ // ILLUSORE
+      if(this.state==='charge')  return bs * 2.6;
+      if(this.state==='evade')   return bs * 1.2;
+      return bs * 1.1;
+    } else {         // BATTERIO
+      if(this.state==='charge')  return bs * 2.0;
+      if(this.state==='retreat') return bs * 1.5;
+      return bs * 0.7; // lento di default
     }
-    if(this.state==='charge') return bs * 2.4;
-    if(this.state==='idle') return bs *.7;
-    return bs *.9;
   }
 
   setState(s, dur){ this.state=s; this.stateT=dur; }
 
+  /* ─── PHASE WALK (Illusore) ─── */
   fireMirage(enemy){
-    showEvent('🟣 PHASE WALK', this.color, 1.2);
-    doFlash(this.color, 0.28);
-    this.intangible = true;
+    if(this.intangible) return;
+    showEvent('👁 PHASE WALK', this.color, 1.4);
+    doFlash(this.color, 0.25);
+
+    this.intangible     = true;
     this.intangibleTime = 0;
-    this.opacity = 0.35;
+    this.opacity        = 0.15;
+
+    // Teletrasporto: punta dietro il nemico o davanti
     const dx = enemy.x - this.x;
     const dy = enemy.y - this.y;
-    const dist = Math.hypot(dx,dy);
-    if(dist < this.r * 4){
-      enemy.vx += (dx/dist) * AR * 1.2;
-      enemy.vy += (dy/dist) * AR * 1.2;
+    const dist = Math.hypot(dx,dy)||1;
+    const nx = dx/dist, ny = dy/dist;
+
+    // Appare dall'altra parte del nemico (sorpresa!)
+    const targetX = enemy.x + nx * this.r * 2.5;
+    const targetY = enemy.y + ny * this.r * 2.5;
+
+    // Verifica che sia dentro arena
+    const td = Math.hypot(targetX-CX, targetY-CY);
+    if(td < AR - this.r*1.5){
+      this.phaseTarget = {x: targetX, y: targetY, ex: enemy.x, ey: enemy.y};
+    } else {
+      // Se fuori, va al centro-nemico
+      this.phaseTarget = {x: CX + (enemy.x-CX)*0.5, y: CY + (enemy.y-CY)*0.5, ex: enemy.x, ey: enemy.y};
     }
+
+    // Spinge anche il nemico (spaventato)
+    enemy.vx += (nx) * AR * 0.8;
+    enemy.vy += (ny) * AR * 0.8;
   }
 
+  /* ─── ABSORB SWARM (Batterio) ─── */
   fireHive(){
-    showEvent('🦠 ABSORB SWARM', this.color, 1.2);
-    doFlash(this.color, 0.28);
-    for(let i=0; i<3; i++){
-      const angle = (i/3) * Math.PI*2;
+    showEvent('🦠 ABSORB SWARM', this.color, 1.4);
+    doFlash(this.color, 0.2);
+    const baseCount = 3;
+    for(let i=0; i<baseCount; i++){
+      const angle = (i/baseCount)*Math.PI*2 + Math.random()*0.4;
       this.swarm.push({
-        angle: angle,
-        dist: this.r * 1.8,
-        speed: 0.05,
-        life: 5
+        angle:  angle,
+        dist:   this.r * 2.0,
+        angularSpeed: 0.8 + Math.random()*0.5, // rad/s — ora si muovono!
+        life:   6.0,
+        maxLife:6.0,
+        r:      this.r * 0.32,
       });
     }
+    this.swarmCount = this.swarm.length;
   }
 
-  aiBerserker(dt, ex, ey){
+  /* ─────────────────────────────────────────
+     AI ILLUSORE — Aggressivo, furbo, veloce
+  ───────────────────────────────────────── */
+  aiIllusore(dt, enemy){
     this.stateT -= dt;
-    const dx = ex - this.x, dy = ey - this.y;
+
+    const dx   = enemy.x - this.x;
+    const dy   = enemy.y - this.y;
     const dist = Math.hypot(dx,dy)||1;
-    const dn = dist / AR;
-    this.anger = Math.min(1,.5);
+    const dn   = dist / AR; // distanza normalizzata 0..1
 
-    if(this.stateT<=0){
-      if(dn<.3 && Math.random()<.6) this.setState('charge',.2);
-      else if(dn<.25 && Math.random()<.4) this.setState('evade',.2);
-      else this.setState('chase',.3);
-    }
+    // Vantaggio velocità
+    const enemySpd = Math.hypot(enemy.vx, enemy.vy);
+    const mySpd    = Math.hypot(this.vx, this.vy);
+    const fasterThanEnemy = this.baseSpeed > enemy.baseSpeed; // sempre true vs Batterio
 
-    let fx=0, fy=0;
-    if(this.state==='chase'){
-      fx = (dx/dist)*this.speed;
-      fy = (dy/dist)*this.speed;
-    } else if(this.state==='charge'){
-      fx = (dx/dist)*this.speed*1.5;
-      fy = (dy/dist)*this.speed*1.5;
-    } else if(this.state==='evade'){
-      fx = -(dy/dist)*this.speed*.8;
-      fy = (dx/dist)*this.speed*.8;
-    }
+    // Bordo
+    const myR  = Math.hypot(this.x-CX, this.y-CY);
+    const nearEdge = myR > AR * 0.78;
 
-    const myR = Math.hypot(this.x-CX, this.y-CY);
-    const edgeT = Math.max(0,(myR - AR*.8)/(AR*.2));
-    if(edgeT>0){
-      fx += ((CX-this.x)/AR)*this.speed*edgeT*2;
-      fy += ((CY-this.y)/AR)*this.speed*edgeT*2;
-    }
-
-    const acc = this.state==='charge'? 20 : 10;
-    this.vx += (fx - this.vx)*Math.min(1, acc*dt);
-    this.vy += (fy - this.vy)*Math.min(1, acc*dt);
-
-    const s = Math.hypot(this.vx,this.vy);
-    const t = Math.min(1, s/(this.speed*1.3));
-    this.squishX = 1 - t*.15;
-    this.squishY = 1 + t*.15;
-  }
-
-  aiTrickster(dt, ex, ey){
-    this.stateT -= dt;
-    const dx = ex - this.x, dy = ey - this.y;
-    const dist = Math.hypot(dx,dy)||1;
-    const dn = dist / AR;
-    const myR = Math.hypot(this.x-CX, this.y-CY);
-
-    this.fear = Math.max(0,(myR - AR*.7)/(AR*.3));
-
-    if(this.stateT<=0){
-      if(this.fear>.6) this.setState('evade',.3);
-      else if(dn<.4 && Math.random()<.5) this.setState('charge',.25);
-      else if(dn<.35 && Math.random()<.5){
-        this.setState('feint',.35);
-        this.feintDir = Math.random()<.5?1:-1;
-        this.feintAmt =.6;
+    if(this.stateT <= 0){
+      if(nearEdge){
+        this.setState('evade', 0.25);
+      } else if(!this.intangible && this.cd <= 0.4 && dn < 0.55 && fasterThanEnemy){
+        // Sta per usare phase walk: carica per avvicinarsi
+        this.setState('charge', 0.18);
+      } else if(dn < 0.45){
+        // Vicino → carica diretta sfruttando velocità
+        if(Math.random() < 0.65) this.setState('charge', 0.22);
+        else {
+          this.setState('feint', 0.28);
+          this.feintDir = Math.random()<.5?1:-1;
+        }
+      } else if(dn < 0.75){
+        // Distanza media → insegue
+        this.setState('chase', 0.3);
       } else {
-        this.setState('orbit',.4);
+        // Lontano → avvicina veloce
+        this.setState('chase', 0.25);
       }
     }
 
     let fx=0, fy=0;
-    if(this.state==='orbit'){
-      const ang = Math.atan2(this.y-CY, this.x-CX);
-      fx = -Math.sin(ang)*this.speed*.7;
-      fy = Math.cos(ang)*this.speed*.7;
+    if(this.state==='chase' || this.state==='charge'){
+      const mult = this.state==='charge' ? 1.6 : 1.0;
+      fx = (dx/dist)*this.speed*mult;
+      fy = (dy/dist)*this.speed*mult;
     } else if(this.state==='feint'){
-      fx = (-dy/dist)*this.feintDir*this.speed*this.feintAmt;
-      fy = (dx/dist)*this.feintDir*this.speed*this.feintAmt;
-    } else if(this.state==='charge'){
-      fx = (dx/dist)*this.speed*1.3;
-      fy = (dy/dist)*this.speed*1.3; // ← BUG FIX: era dz
+      // Finge di attaccare laterale
+      fx = (-dy/dist)*this.feintDir*this.speed*0.9;
+      fy = (dx/dist)*this.feintDir*this.speed*0.9;
     } else if(this.state==='evade'){
-      fx = -((this.x-CX)/AR)*this.speed*1.5;
-      fy = -((this.y-CY)/AR)*this.speed*1.5;
+      // Rimbalza verso centro
+      fx = (CX-this.x)/AR * this.speed * 1.8;
+      fy = (CY-this.y)/AR * this.speed * 1.8;
     }
 
-    const acc=this.state==='charge'?18:8;
-    this.vx+=(fx-this.vx)*Math.min(1,acc*dt);
-    this.vy+=(fy-this.vy)*Math.min(1,acc*dt);
+    // Forza bordo
+    const edgeT = Math.max(0,(myR - AR*.8)/(AR*.2));
+    if(edgeT>0){
+      fx += ((CX-this.x)/AR)*this.speed*edgeT*3;
+      fy += ((CY-this.y)/AR)*this.speed*edgeT*3;
+    }
+
+    const acc = this.state==='charge'?22:12;
+    this.vx += (fx-this.vx)*Math.min(1,acc*dt);
+    this.vy += (fy-this.vy)*Math.min(1,acc*dt);
+
+    const s=Math.hypot(this.vx,this.vy);
+    const t=Math.min(1,s/(this.speed*1.4));
+    this.squishX=1-t*.18;
+    this.squishY=1+t*.18;
+  }
+
+  /* ─────────────────────────────────────────
+     AI BATTERIO — Paziente, resistente, usa swarm
+  ───────────────────────────────────────── */
+  aiBatterio(dt, enemy){
+    this.stateT -= dt;
+
+    const dx   = enemy.x - this.x;
+    const dy   = enemy.y - this.y;
+    const dist = Math.hypot(dx,dy)||1;
+    const dn   = dist / AR;
+
+    const myR     = Math.hypot(this.x-CX, this.y-CY);
+    const nearEdge = myR > AR * 0.75;
+
+    // Batterio si sente forte quando ha tanti minion
+    const swarmPower = Math.min(1, this.swarm.length / 5);
+    // Considera di attaccare solo se swarm è abbastanza numeroso
+    const readyToAttack = swarmPower > 0.4;
+
+    if(this.stateT <= 0){
+      if(nearEdge){
+        this.setState('retreat', 0.3);
+      } else if(readyToAttack && dn < 0.35){
+        // Ha swarm e il nemico è vicino → attacca!
+        this.setState('charge', 0.3);
+      } else if(!readyToAttack && dn < 0.4){
+        // Non è pronto → evita e orbita
+        this.setState('orbit', 0.5);
+      } else {
+        // Default: orbita lenta aspettando il cd della hive
+        this.setState('orbit', Math.random()*0.4+0.3);
+      }
+    }
+
+    let fx=0, fy=0;
+    const ang = Math.atan2(this.y-CY, this.x-CX);
+
+    if(this.state==='orbit'){
+      // Orbita intorno al centro, non troppo vicino al nemico
+      const targetDist = AR * 0.5;
+      const rdx = CX - this.x;
+      const rdy = CY - this.y;
+      const orbitFx = -Math.sin(ang)*this.speed*0.6;
+      const orbitFy =  Math.cos(ang)*this.speed*0.6;
+      // Un po' di attrazione verso distanza target
+      const centerPull = (Math.hypot(rdx,rdy)-targetDist)/AR;
+      fx = orbitFx + rdx/AR * this.speed * centerPull;
+      fy = orbitFy + rdy/AR * this.speed * centerPull;
+    } else if(this.state==='charge'){
+      fx = (dx/dist)*this.speed*1.8;
+      fy = (dy/dist)*this.speed*1.8;
+    } else if(this.state==='retreat'){
+      // Torna verso centro
+      fx = (CX-this.x)/AR * this.speed * 2.0;
+      fy = (CY-this.y)/AR * this.speed * 2.0;
+    }
+
+    // Forza bordo
+    const edgeT = Math.max(0,(myR - AR*.8)/(AR*.2));
+    if(edgeT>0){
+      fx += ((CX-this.x)/AR)*this.speed*edgeT*3;
+      fy += ((CY-this.y)/AR)*this.speed*edgeT*3;
+    }
+
+    const acc = this.state==='charge'?16:6;
+    this.vx += (fx-this.vx)*Math.min(1,acc*dt);
+    this.vy += (fy-this.vy)*Math.min(1,acc*dt);
 
     const s=Math.hypot(this.vx,this.vy);
     const t=Math.min(1,s/(this.speed*1.2));
-    this.squishX=1-t*.12;
-    this.squishY=1+t*.12;
+    this.squishX=1-t*.1;
+    this.squishY=1+t*.1;
   }
 
+  /* ──────────── STEP ──────────── */
   step(dt, enemy){
-    this.pulseT += dt*3;
+    this.pulseT += dt*2.5;
     this.cd = Math.max(0, this.cd-dt);
 
+    // Attiva potere
     if(this.cd <= 0){
       if(this.power === 'mirage') this.fireMirage(enemy);
-      if(this.power === 'hive') this.fireHive();
+      if(this.power === 'hive')   this.fireHive();
       this.cd = this.maxCd;
     }
 
+    // Phase walk: dopo 0.5s appare al target
     if(this.intangible){
       this.intangibleTime += dt;
-      if(this.intangibleTime >= 1.2){
-        this.intangible = false;
-        this.opacity = 1;
+      if(this.intangibleTime >= 0.45 && this.phaseTarget){
+        // Teletrasporto!
+        this.x = this.phaseTarget.x;
+        this.y = this.phaseTarget.y;
+        // Lancia verso il nemico
+        const tex = this.phaseTarget.ex;
+        const tey = this.phaseTarget.ey;
+        const tdx = tex - this.x, tdy = tey - this.y;
+        const td  = Math.hypot(tdx,tdy)||1;
+        // Impulso verso il nemico (ora è alle spalle)
+        this.vx = -(tdx/td)*this.baseSpeed*1.8;
+        this.vy = -(tdy/td)*this.baseSpeed*1.8;
+        this.phaseTarget = null;
+        doFlash(this.color, 0.4);
+        showEvent('💥 STRIKE!', this.color, 0.8);
+      }
+      if(this.intangibleTime >= 1.3){
+        this.intangible     = false;
+        this.intangibleTime = 0;
+        this.opacity        = 1;
+        this.phaseTarget    = null;
       }
     }
 
+    // Aggiorna swarm — FIX BUG: ora i minion ruotano davvero
     this.swarm = this.swarm.filter(s=>{
-      s.angle += s.speed;
-      s.life -= dt;
+      s.angle += s.angularSpeed * dt; // rotazione reale in radianti/sec
+      s.life  -= dt;
       return s.life > 0;
     });
+    this.swarmCount = this.swarm.length;
 
-    if(this.style==='berserker') this.aiBerserker(dt, enemy.x, enemy.y);
-    else this.aiTrickster(dt, enemy.x, enemy.y);
+    // AI
+    if(this.id === 0) this.aiIllusore(dt, enemy);
+    else              this.aiBatterio(dt, enemy);
 
     if(this.intangible) return;
 
-    const spd = Math.hypot(this.vx,this.vy);
-    const maxSpd = this.speed * 2;
-    if(spd>maxSpd){ this.vx=this.vx/spd*maxSpd; this.vy=this.vy/spd*maxSpd; }
+    // Velocità massima
+    const spd    = Math.hypot(this.vx,this.vy);
+    const maxSpd = this.speed * 2.2;
+    if(spd > maxSpd){ this.vx=this.vx/spd*maxSpd; this.vy=this.vy/spd*maxSpd; }
 
     this.x += this.vx*dt;
     this.y += this.vy*dt;
 
-    this.trail.push({x:this.x,y:this.y});
-    if(this.trail.length>40) this.trail.shift();
+    // Trail
+    this.trail.push({x:this.x, y:this.y});
+    if(this.trail.length>45) this.trail.shift();
 
-    const distFromCenter = Math.hypot(this.x-CX, this.y-CY);
-    if(distFromCenter > AR - this.r){
-      const nx = (this.x-CX)/distFromCenter;
-      const ny = (this.y-CY)/distFromCenter;
-      const dot = this.vx*nx + this.vy*ny;
-      this.vx -= 2*dot*nx*0.8;
-      this.vy -= 2*dot*ny*0.8;
-      this.x = CX + nx*(AR-this.r);
-      this.y = CY + ny*(AR-this.r);
+    // Rimbalzo bordo arena
+    const dfc = Math.hypot(this.x-CX, this.y-CY);
+    if(dfc > AR - this.r){
+      const nx=(this.x-CX)/dfc, ny=(this.y-CY)/dfc;
+      const dot=this.vx*nx+this.vy*ny;
+      this.vx -= 2*dot*nx*0.75;
+      this.vy -= 2*dot*ny*0.75;
+      this.x = CX+nx*(AR-this.r);
+      this.y = CY+ny*(AR-this.r);
     }
   }
 
+  /* ──────────── DRAW ──────────── */
   draw(){
-    const r = this.r * (1 + Math.sin(this.pulseT)*.04);
+    const pulse = 1 + Math.sin(this.pulseT)*0.05;
+    const r = this.r * pulse;
     const ang = Math.atan2(this.vy,this.vx);
 
+    // Trail
     ctx.save();
     for(let i=1;i<this.trail.length;i++){
-      const t = i/this.trail.length;
+      const t=i/this.trail.length;
       ctx.beginPath();
-      ctx.moveTo(this.trail[i-1].x,this.trail[i-1].y);
-      ctx.lineTo(this.trail[i].x,this.trail[i].y);
-      ctx.strokeStyle = this.color;
-      ctx.lineWidth = r*.3 * t;
-      ctx.globalAlpha = t *.4 * this.opacity;
+      ctx.moveTo(this.trail[i-1].x, this.trail[i-1].y);
+      ctx.lineTo(this.trail[i].x,   this.trail[i].y);
+      ctx.strokeStyle=this.color;
+      ctx.lineWidth=r*0.35*t;
+      ctx.globalAlpha=t*0.35*this.opacity;
       ctx.stroke();
     }
     ctx.restore();
 
+    // Swarm (Batterio)
     this.swarm.forEach(s=>{
-      const sx = this.x + Math.cos(s.angle) * s.dist;
-      const sy = this.y + Math.sin(s.angle) * s.dist;
+      const sx = this.x + Math.cos(s.angle)*s.dist;
+      const sy = this.y + Math.sin(s.angle)*s.dist;
+      const life01 = s.life/s.maxLife;
       ctx.save();
-      ctx.globalAlpha = s.life/5 * this.opacity;
-      ctx.fillStyle = this.color;
+      ctx.globalAlpha = life01 * 0.9 * this.opacity;
+      // Glow
+      ctx.shadowBlur=10;
+      ctx.shadowColor=this.color;
+      ctx.fillStyle=this.color;
       ctx.beginPath();
-      ctx.arc(sx, sy, r*0.3, 0, Math.PI*2);
+      ctx.arc(sx, sy, s.r*(0.7+life01*0.3), 0, Math.PI*2);
       ctx.fill();
       ctx.restore();
     });
 
+    // Alone phase walk (Illusore invisibile)
+    if(this.intangible && this.id===0){
+      ctx.save();
+      ctx.globalAlpha=0.25;
+      ctx.strokeStyle=this.color;
+      ctx.lineWidth=2;
+      ctx.shadowBlur=20;
+      ctx.shadowColor=this.color;
+      ctx.setLineDash([4,8]);
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, r*1.4, 0, Math.PI*2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Orb
     ctx.save();
     ctx.globalAlpha = this.opacity;
     ctx.translate(this.x, this.y);
@@ -326,91 +569,174 @@ class Orb {
     ctx.scale(this.squishX, this.squishY);
     ctx.rotate(-ang);
 
+    // Glow esterno
+    ctx.shadowBlur=this.id===0?30:20;
+    ctx.shadowColor=this.color;
+
     const grd=ctx.createRadialGradient(-r*.3,-r*.3,r*.05,0,0,r);
     grd.addColorStop(0,'#fff');
-    grd.addColorStop(.2,this.color);
-    grd.addColorStop(1,'rgba(0,0,0,.8)');
+    grd.addColorStop(0.18,this.color);
+    grd.addColorStop(1,'rgba(0,0,0,0.85)');
     ctx.fillStyle=grd;
     ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.fill();
+
+    ctx.restore();
+
+    // Label
+    ctx.save();
+    ctx.globalAlpha=0.6*this.opacity;
+    ctx.fillStyle=this.color;
+    ctx.font=`bold ${r*0.7}px 'Courier New'`;
+    ctx.textAlign='center';
+    ctx.fillText(this.id===0?'ILLUSORE':'BATTERIO', this.x, this.y - r*1.6);
     ctx.restore();
   }
 }
 
+/* ══════════════════════════════
+   COLLISIONI
+══════════════════════════════ */
 function handleCollision(o0, o1){
   if(o0.intangible || o1.intangible) return;
   const dx=o1.x-o0.x, dy=o1.y-o0.y;
   const d=Math.hypot(dx,dy)||1;
   const minD=o0.r+o1.r;
   if(d>=minD) return;
+
   const nx=dx/d, ny=dy/d;
   const overlap=minD-d;
-  o0.x-=nx*overlap*.5;
-  o0.y-=ny*overlap*.5;
-  o1.x+=nx*overlap*.5;
-  o1.y+=ny*overlap*.5;
-  const dot=o0.vx*nx+o0.vy*ny;
-  o0.vx-=dot*nx*1.6;
-  o0.vy-=dot*ny*1.6;
-  const dot2=o1.vx*nx+o1.vy*ny;
-  o1.vx-=dot2*nx*1.6;
-  o1.vy-=dot2*ny*1.6;
-  freezeT = 0.06;
-  flashA = 0.3;
-  doFlash('#fff', 0.3);
+  o0.x -= nx*overlap*.5;
+  o0.y -= ny*overlap*.5;
+  o1.x += nx*overlap*.5;
+  o1.y += ny*overlap*.5;
+
+  const dot0=o0.vx*nx+o0.vy*ny;
+  o0.vx-=dot0*nx*1.7;
+  o0.vy-=dot0*ny*1.7;
+  const dot1=o1.vx*nx+o1.vy*ny;
+  o1.vx-=dot1*nx*1.7;
+  o1.vy-=dot1*ny*1.7;
+
+  freezeT=0.06;
+  flashA=0.35;
+  doFlash('#fff',0.35);
 }
 
+/* ══════════════════════════════
+   ARENA
+══════════════════════════════ */
 function drawArena(){
-  ctx.fillStyle='#0a0a0a';
+  ctx.clearRect(0,0,W,H);
+
+  // Fondo
+  ctx.fillStyle='#08080f';
   ctx.fillRect(0,0,W,H);
-  const grd = ctx.createLinearGradient(CX-AR, CY-AR*0.5, CX+AR, CY+AR*0.5);
-  grd.addColorStop(0,'#1a0025');
-  grd.addColorStop(0.5,'#3d0066');
-  grd.addColorStop(1,'#1a0025');
+
+  // Ombra sotto arena (effetto profondità)
+  ctx.save();
+  ctx.globalAlpha=0.3;
+  const shadowGrd=ctx.createRadialGradient(CX,CY+AR*0.08,0,CX,CY,AR*1.05);
+  shadowGrd.addColorStop(0,'rgba(120,0,200,0.5)');
+  shadowGrd.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=shadowGrd;
+  ctx.beginPath();
+  ctx.arc(CX,CY,AR*1.1,0,Math.PI*2);
+  ctx.fill();
+  ctx.restore();
+
+  // Riempimento arena
+  const grd=ctx.createRadialGradient(CX-AR*0.2,CY-AR*0.2,0,CX,CY,AR);
+  grd.addColorStop(0,'#2a004a');
+  grd.addColorStop(0.5,'#18003a');
+  grd.addColorStop(1,'#0d001f');
   ctx.fillStyle=grd;
   ctx.beginPath();
   ctx.arc(CX,CY,AR,0,Math.PI*2);
   ctx.fill();
-  ctx.strokeStyle='#dd44ff';
-  ctx.lineWidth=3;
-  ctx.globalAlpha=0.6;
-  ctx.shadowBlur=20;
-  ctx.shadowColor='#dd44ff';
+
+  // Griglia circolare interna
+  ctx.save();
+  ctx.globalAlpha=0.07;
+  ctx.strokeStyle='#cc44ff';
+  ctx.lineWidth=1;
+  for(let ri=1;ri<=3;ri++){
+    ctx.beginPath();
+    ctx.arc(CX,CY,AR*(ri/3.5),0,Math.PI*2);
+    ctx.stroke();
+  }
+  // Raggi
+  for(let a=0;a<6;a++){
+    const ang=a*Math.PI/3;
+    ctx.beginPath();
+    ctx.moveTo(CX,CY);
+    ctx.lineTo(CX+Math.cos(ang)*AR, CY+Math.sin(ang)*AR);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // Bordo neon viola
+  ctx.save();
+  ctx.shadowBlur=28;
+  ctx.shadowColor='#cc44ff';
+  ctx.strokeStyle='#cc44ff';
+  ctx.lineWidth=2.5;
+  ctx.globalAlpha=0.85;
   ctx.beginPath(); ctx.arc(CX,CY,AR,0,Math.PI*2); ctx.stroke();
-  ctx.globalAlpha=1;
-  ctx.shadowBlur=0;
+  // Bordo esterno rosso (come nella foto)
+  ctx.shadowColor='#ff2244';
+  ctx.strokeStyle='#ff2244';
+  ctx.lineWidth=1.5;
+  ctx.globalAlpha=0.4;
+  ctx.beginPath(); ctx.arc(CX,CY,AR+4,0,Math.PI*2); ctx.stroke();
+  ctx.restore();
 }
 
+/* ══════════════════════════════
+   INIT
+══════════════════════════════ */
 let orbs=[];
 function init(){
   orbs=[];
-  const ox = AR*.5;
+  const ox=AR*0.42;
   orbs.push(new Orb(0, CX-ox, CY));
   orbs.push(new Orb(1, CX+ox, CY));
-  orbs[0].vx= AR*.1; orbs[1].vx=-AR*.1;
+  orbs[0].vx= AR*0.12;
+  orbs[1].vx=-AR*0.12;
 }
 
+/* ══════════════════════════════
+   LOOP
+══════════════════════════════ */
 let last=0;
 function loop(ts){
   requestAnimationFrame(loop);
-  const raw = Math.min(.033, (ts-last)/1000); last=ts;
+  const raw=Math.min(0.033,(ts-last)/1000); last=ts;
   let dt=raw;
-  if(freezeT>0){ freezeT-=raw; dt=raw*0.03; }
-  if(evTimer>0){evTimer-=raw; if(evTimer<=0)evEl.style.opacity='0';}
+  if(freezeT>0){ freezeT-=raw; dt=raw*0.04; }
+  if(evTimer>0){ evTimer-=raw; if(evTimer<=0) evEl.style.opacity='0'; }
+
   const [o0,o1]=orbs;
+
+  // Stagger step per evitare freeze
   o0.step(dt,o1);
   o1.step(dt,o0);
   handleCollision(o0,o1);
+
   drawArena();
   o0.draw();
   o1.draw();
+
+  // Flash bianco post-collisione
   if(flashA>0){
     ctx.save();
-    ctx.globalAlpha=flashA*0.5;
+    ctx.globalAlpha=flashA*0.45;
     ctx.fillStyle='#fff';
     ctx.fillRect(0,0,W,H);
     ctx.restore();
-    flashA=Math.max(0, flashA-raw*8);
+    flashA=Math.max(0,flashA-raw*9);
   }
+
+  updateHUD();
 }
 
 init();
