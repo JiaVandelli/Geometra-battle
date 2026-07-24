@@ -3,18 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Automazione Brogliaccio Magazzino</title>
+    <title>Automazione Brogliaccio Magazzino (Alta Leggibilità)</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; padding: 40px 20px; color: #2C3E50; }
-        .container { max-width: 650px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        h2 { text-align: center; margin-bottom: 5px; }
-        p.subtitle { text-align: center; color: #7f8c8d; margin-bottom: 25px; font-size: 14px; }
+        .container { max-width: 680px; margin: 0 auto; background: white; padding: 35px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h2 { text-align: center; margin-bottom: 5px; font-size: 26px; }
+        p.subtitle { text-align: center; color: #7f8c8d; margin-bottom: 25px; font-size: 15px; }
+        .features { background: #e8f8f5; border-left: 4px solid #1abc9c; padding: 12px 18px; margin-bottom: 25px; font-size: 14px; border-radius: 4px; }
+        .features ul { margin: 5px 0 0 20px; padding: 0; }
         .file-upload { border: 2px dashed #bdc3c7; padding: 30px; text-align: center; border-radius: 8px; background: #fafbfc; margin-bottom: 20px; }
-        input[type="file"] { margin-top: 15px; }
-        button { background: #27ae60; color: white; border: none; padding: 15px; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold; width: 100%; transition: 0.3s; }
+        input[type="file"] { margin-top: 15px; font-size: 15px; }
+        button { background: #27ae60; color: white; border: none; padding: 16px; border-radius: 6px; cursor: pointer; font-size: 18px; font-weight: bold; width: 100%; transition: 0.3s; }
         button:hover { background: #2ecc71; }
         button:disabled { background: #bdc3c7; cursor: not-allowed; }
-        #status { margin-top: 20px; text-align: center; font-weight: bold; font-size: 15px; }
+        #status { margin-top: 20px; text-align: center; font-weight: bold; font-size: 16px; }
         .success { color: #27ae60; }
         .error { color: #e74c3c; }
     </style>
@@ -24,8 +26,18 @@
 <body>
 
 <div class="container">
-    <h2>Controllo Magazzino</h2>
-    <p class="subtitle">Carica il brogliaccio esportato per ripulirlo e calcolare gli ammanchi</p>
+    <h2>📦 Controllo Magazzino Automatizzato</h2>
+    <p class="subtitle">Ottimizzato per Stampa A3 ad Alta Leggibilità</p>
+
+    <div class="features">
+        <strong>⚡ Automazioni attive:</strong>
+        <ul>
+            <li>Rimozione automatica dei doppioni (Codice + Descrizione)</li>
+            <li>Ordinamento alfabetico A-Z per Descrizione</li>
+            <li>Righe alte (30px) e caratteri ingranditi (13-14pt)</li>
+            <li>Somma automatica numeri nelle Note e colori scostamenti</li>
+        </ul>
+    </div>
 
     <div class="file-upload">
         <label for="excelFile"><strong>Seleziona il file Excel grezzo:</strong></label><br>
@@ -41,7 +53,6 @@
     const processBtn = document.getElementById('processBtn');
     const statusDiv = document.getElementById('status');
 
-    // Abilita il bottone solo se è stato selezionato un file
     fileInput.addEventListener('change', () => {
         processBtn.disabled = !fileInput.value;
         statusDiv.innerHTML = "";
@@ -49,116 +60,164 @@
 
     async function elaboraFile() {
         try {
-            statusDiv.innerHTML = "Elaborazione in corso... ⏳";
+            statusDiv.innerHTML = "Elaborazione, rimozione doppioni e ordinamento in corso... ⏳";
             statusDiv.className = "";
             processBtn.disabled = true;
 
             const file = fileInput.files[0];
             const arrayBuffer = await file.arrayBuffer();
             
-            // Carica il file originale
             const workbookIn = new ExcelJS.Workbook();
             await workbookIn.xlsx.load(arrayBuffer);
             const worksheetIn = workbookIn.worksheets[0];
 
-            // Crea il file nuovo e pulito
             const workbookOut = new ExcelJS.Workbook();
-            const worksheetOut = workbookOut.addWorksheet('Magazzino Automatizzato');
+            const worksheetOut = workbookOut.addWorksheet('Magazzino A3');
 
-            // Intestazioni automatizzate (senza UM e con Differenza/Stato)
-            worksheetOut.addRow(["Codice articolo", "Descrizione", "Quantità ERP", "Cliente", "Quantità video", "Contate", "Note", "Differenza", "Stato Controllo"]);
+            // Intestazioni
+            const headers = ["Codice articolo", "Descrizione", "Quantità ERP", "Cliente", "Quantità video", "Contate", "Note", "Differenza", "Stato Controllo"];
+            const headerRow = worksheetOut.addRow(headers);
             
-            const headerRow = worksheetOut.getRow(1);
-            headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            // Stilo Intestazione (Altezza 35, Font grande 14pt Grassetto)
+            headerRow.height = 35;
             headerRow.eachCell(cell => {
+                cell.font = { name: 'Segoe UI', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
                 cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2C3E50' } };
-                cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
             });
 
-            // Analizza le righe (saltando riga 1 Titolo e riga 2 Header originali)
+            // 1. RACCOLTA DATI E RIMOZIONE DOPPIONI
+            let rowsData = [];
+            const seenDuplicates = new Set();
             let startRow = 3; 
+
             worksheetIn.eachRow((row, rowNumber) => {
                 if (rowNumber < startRow) return;
 
-                const codice = row.getCell(1).value || "";
-                const desc = row.getCell(2).value || "";
-                // La colonna 3 è UM, la saltiamo.
+                const codice = (row.getCell(1).value || "").toString().trim();
+                const desc = (row.getCell(2).value || "").toString().trim();
+                if (!codice && !desc) return; // Salta righe interamente vuote
+
+                // Controllo doppione: creiamo una chiave unica unendo Codice e Descrizione
+                const uniqueKey = `${codice.toUpperCase()}_${desc.toUpperCase()}`;
+                if (seenDuplicates.has(uniqueKey)) {
+                    return; // È un doppione! Lo saltiamo e non lo aggiungiamo all'elenco.
+                }
+                seenDuplicates.add(uniqueKey);
+
                 const quantita = row.getCell(4).value || 0;
-                const cliente = row.getCell(5).value || "";
+                const cliente = (row.getCell(5).value || "").toString();
                 const qVideo = row.getCell(6).value || 0;
-                // La colonna 7 è Contate (vuota nell'export)
                 const noteRaw = row.getCell(8).value;
                 const note = noteRaw ? noteRaw.toString() : "";
 
-                // Estrai i numeri dalle Note (Automazione Regex)
+                // Estrazione Somma Note via Regex
                 let contate = null;
                 const nums = note.match(/\b\d+\b/g);
-                
                 if (nums) {
                     contate = nums.reduce((acc, val) => acc + parseInt(val, 10), 0);
-                } else if (qVideo > 0 && note.trim() === "") {
-                    contate = parseFloat(qVideo); // Se ci sono articoli video e non ci sono note, è allineato
+                } else if (parseFloat(qVideo) > 0 && note.trim() === "") {
+                    contate = parseFloat(qVideo);
                 }
 
-                // Calcolo scostamenti e stati
+                // Calcolo Differenze e Stato
                 let diff = "";
                 let stato = "";
+                const qVidNum = parseFloat(qVideo) || 0;
 
-                if (parseFloat(qVideo) === 0) {
+                if (qVidNum === 0) {
                     stato = "GIACENZA ZERO";
                 } else if (contate === null || contate === "") {
                     stato = "DA CONTARE";
                 } else {
-                    diff = contate - parseFloat(qVideo);
+                    diff = contate - qVidNum;
                     if (diff === 0) stato = "ALLINEATO";
                     else if (diff < 0) stato = "AMMANCO (!)";
                     else stato = "ECCEDENZA (+)";
                 }
 
-                // Aggiungi la riga elaborata
-                const newRow = worksheetOut.addRow([codice, desc, quantita, cliente, qVideo, contate, note, diff, stato]);
-
-                // Applica Formattazione Condizionale tramite Colori di Sfondo
-                if (parseFloat(qVideo) === 0) {
-                    // Grigio per Giacenza Zero
-                    newRow.eachCell(c => c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD5D8DC' } });
-                } else if (diff !== "" && diff < 0) {
-                    // Rosso per Ammanco
-                    newRow.eachCell(c => c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFADBD8' } });
-                } else if (diff !== "" && diff > 0) {
-                    // Verde per Eccedenza
-                    newRow.eachCell(c => c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD4EFDF' } });
-                }
-
-                // Formatta i numeri
-                newRow.getCell(8).font = { bold: true };
+                rowsData.push({
+                    codice, desc, quantita, cliente, qVideo: qVidNum, contate, note, diff, stato
+                });
             });
 
-            // Adatta larghezza colonne per leggibilità
+            // 2. ORDINAMENTO ALFABETICO (Per Colonna B - Descrizione)
+            rowsData.sort((a, b) => a.desc.localeCompare(b.desc, 'it', { sensitivity: 'base' }));
+
+            // 3. SCRITTURA NEL NUOVO FOGLIO CON STILE ALTA LEGGIBILITÀ (A3)
+            rowsData.forEach(item => {
+                const newRow = worksheetOut.addRow([
+                    item.codice, item.desc, item.quantita, item.cliente, 
+                    item.qVideo, item.contate, item.note, item.diff, item.stato
+                ]);
+
+                // ALTEZZA RIGA A 30 (Richiesta Specifica)
+                newRow.height = 30;
+
+                // Formattazione Base: Font grande 13pt per ottima lettura
+                newRow.eachCell((c, colIdx) => {
+                    c.font = { name: 'Segoe UI', size: 13, color: { argb: 'FF2C3E50' } };
+                    c.alignment = { vertical: 'middle', wrapText: true };
+                    
+                    // Colori di Sfondo Condizionali
+                    if (item.qVideo === 0) {
+                        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD5D8DC' } }; // Grigio
+                    } else if (item.diff !== "" && item.diff < 0) {
+                        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFADBD8' } }; // Rosso
+                    } else if (item.diff !== "" && item.diff > 0) {
+                        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD4EFDF' } }; // Verde
+                    }
+                });
+
+                // Allineamenti numerici a destra e centratura stato
+                newRow.getCell(3).alignment = { horizontal: 'right', vertical: 'middle' };
+                newRow.getCell(5).alignment = { horizontal: 'right', vertical: 'middle' };
+                newRow.getCell(6).alignment = { horizontal: 'right', vertical: 'middle' };
+                newRow.getCell(8).alignment = { horizontal: 'right', vertical: 'middle' };
+                newRow.getCell(9).alignment = { horizontal: 'center', vertical: 'middle' };
+
+                // Font ancora più grandi e robusti per Codice, Contate e Differenze
+                newRow.getCell(1).font = { name: 'Segoe UI', size: 13, bold: true }; // Codice
+                newRow.getCell(6).font = { name: 'Segoe UI', size: 14, bold: true }; // Contate (14pt Bold!)
+                newRow.getCell(8).font = { name: 'Segoe UI', size: 14, bold: true }; // Differenza (14pt Bold!)
+                newRow.getCell(9).font = { name: 'Segoe UI', size: 12, bold: true }; // Stato
+            });
+
+            // Allargamento Colonne per formato A3
             worksheetOut.columns = [
-                { width: 25 }, { width: 45 }, { width: 15 }, { width: 35 }, 
-                { width: 15 }, { width: 12 }, { width: 50 }, { width: 12 }, { width: 18 }
+                { width: 28 }, // Codice
+                { width: 55 }, // Descrizione
+                { width: 16 }, // Quantità ERP
+                { width: 38 }, // Cliente
+                { width: 18 }, // Quantità video
+                { width: 15 }, // Contate
+                { width: 55 }, // Note
+                { width: 15 }, // Differenza
+                { width: 20 }  // Stato
             ];
 
-            // Genera il file e lancia il download
+            // Blocco intestazione (Freeze Panes)
+            worksheetOut.views = [{ state: 'frozen', xSplit: 0, ySplit: 1 }];
+
+            // Download
             const buffer = await workbookOut.xlsx.writeBuffer();
             const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
             const url = window.URL.createObjectURL(blob);
             
             const a = document.createElement('a');
             a.href = url;
-            a.download = "Magazzino_Automatizzato.xlsx";
+            a.download = "Magazzino_Ordinato_A3.xlsx";
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
 
-            statusDiv.innerHTML = "File elaborato e scaricato con successo! ✔️";
+            statusDiv.innerHTML = "Report A3 generato con successo! Doppioni rimossi e righe ordinate. ✔️";
             statusDiv.className = "success";
             
         } catch (error) {
             console.error(error);
-            statusDiv.innerHTML = "Errore durante l'elaborazione del file. Verifica che sia il formato corretto.";
+            statusDiv.innerHTML = "Errore durante l'elaborazione. Verifica il file caricato.";
             statusDiv.className = "error";
         } finally {
             processBtn.disabled = false;
