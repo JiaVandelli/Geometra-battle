@@ -1,90 +1,170 @@
-import re
-from openpyxl.formatting.rule import FormulaRule
-from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
-import pandas as pd
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automazione Brogliaccio Magazzino</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; padding: 40px 20px; color: #2C3E50; }
+        .container { max-width: 650px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h2 { text-align: center; margin-bottom: 5px; }
+        p.subtitle { text-align: center; color: #7f8c8d; margin-bottom: 25px; font-size: 14px; }
+        .file-upload { border: 2px dashed #bdc3c7; padding: 30px; text-align: center; border-radius: 8px; background: #fafbfc; margin-bottom: 20px; }
+        input[type="file"] { margin-top: 15px; }
+        button { background: #27ae60; color: white; border: none; padding: 15px; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold; width: 100%; transition: 0.3s; }
+        button:hover { background: #2ecc71; }
+        button:disabled { background: #bdc3c7; cursor: not-allowed; }
+        #status { margin-top: 20px; text-align: center; font-weight: bold; font-size: 15px; }
+        .success { color: #27ae60; }
+        .error { color: #e74c3c; }
+    </style>
+    <!-- Libreria per manipolare Excel direttamente nel browser -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+</head>
+<body>
 
+<div class="container">
+    <h2>Controllo Magazzino</h2>
+    <p class="subtitle">Carica il brogliaccio esportato per ripulirlo e calcolare gli ammanchi</p>
 
-def estrai_somma_note(testo):
-  """Estrae tutti i numeri da una stringa di testo e ne calcola la somma."""
-  if pd.isna(testo) or not str(testo).strip():
-    return None
-  numeri = re.findall(r"\b\d+\b", str(testo))
-  return sum(map(int, numeri)) if numeri else None
+    <div class="file-upload">
+        <label for="excelFile"><strong>Seleziona il file Excel grezzo:</strong></label><br>
+        <input type="file" id="excelFile" accept=".xlsx, .xls">
+    </div>
 
+    <button id="processBtn" onclick="elaboraFile()" disabled>Elabora e Scarica Report</button>
+    <div id="status"></div>
+</div>
 
-def automatizza_magazzino(file_input, file_output):
-  # 1. Carica il file grezzo saltando la riga 1 ("Brogliaccio documenti")
-  df = pd.read_excel(file_input, skiprows=1)
+<script>
+    const fileInput = document.getElementById('excelFile');
+    const processBtn = document.getElementById('processBtn');
+    const statusDiv = document.getElementById('status');
 
-  # 2. Rimuovi la colonna 'UM' (che contiene 'NR')
-  if "UM" in df.columns:
-    df = df.drop(columns=["UM"])
+    // Abilita il bottone solo se è stato selezionato un file
+    fileInput.addEventListener('change', () => {
+        processBtn.disabled = !fileInput.value;
+        statusDiv.innerHTML = "";
+    });
 
-  # 3. Calcola in automatico la colonna 'Contate' (ex colonna G, ora F) sommando i numeri nelle Note
-  df["Contate"] = df["Note"].apply(estrai_somma_note)
+    async function elaboraFile() {
+        try {
+            statusDiv.innerHTML = "Elaborazione in corso... ⏳";
+            statusDiv.className = "";
+            processBtn.disabled = true;
 
-  # Se la nota è vuota ma c'è quantità video > 0, possiamo considerare l'articolo allineato (opzionale)
-  df["Contate"] = df.apply(
-      lambda r: (
-          r["Quantità video"]
-          if pd.isna(r["Contate"]) and r["Quantità video"] > 0 and pd.isna(r["Note"])
-          else r["Contate"]
-      ),
-      axis=1,
-  )
+            const file = fileInput.files[0];
+            const arrayBuffer = await file.arrayBuffer();
+            
+            // Carica il file originale
+            const workbookIn = new ExcelJS.Workbook();
+            await workbookIn.xlsx.load(arrayBuffer);
+            const worksheetIn = workbookIn.worksheets[0];
 
-  # 4. Calcola la colonna di controllo della Differenza
-  df["Differenza"] = df["Contate"] - df["Quantità video"]
+            // Crea il file nuovo e pulito
+            const workbookOut = new ExcelJS.Workbook();
+            const worksheetOut = workbookOut.addWorksheet('Magazzino Automatizzato');
 
-  # 5. Esporta in Excel tramite openpyxl per applicare gli stili
-  with pd.ExcelWriter(file_output, engine="openpyxl") as writer:
-    df.to_excel(writer, sheet_name="Controllo_Magazzino", index=False)
-    ws = writer.sheets["Controllo_Magazzino"]
+            // Intestazioni automatizzate (senza UM e con Differenza/Stato)
+            worksheetOut.addRow(["Codice articolo", "Descrizione", "Quantità ERP", "Cliente", "Quantità video", "Contate", "Note", "Differenza", "Stato Controllo"]);
+            
+            const headerRow = worksheetOut.getRow(1);
+            headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            headerRow.eachCell(cell => {
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2C3E50' } };
+                cell.alignment = { horizontal: 'center', vertical: 'middle' };
+            });
 
-    # --- FORMATTAZIONE CONDIZIONALE ---
-    max_row = len(df) + 1
+            // Analizza le righe (saltando riga 1 Titolo e riga 2 Header originali)
+            let startRow = 3; 
+            worksheetIn.eachRow((row, rowNumber) => {
+                if (rowNumber < startRow) return;
 
-    # Colore Grigio per Quantità Video == 0
-    grigio_fill = PatternFill(
-        start_color="D5D8DC", end_color="D5D8DC", fill_type="solid"
-    )
-    ws.conditional_formatting.add(
-        f"A2:I{max_row}",
-        FormulaRule(formula=["$E2=0"], stopIfTrue=True, fill=grigio_fill),
-    )
+                const codice = row.getCell(1).value || "";
+                const desc = row.getCell(2).value || "";
+                // La colonna 3 è UM, la saltiamo.
+                const quantita = row.getCell(4).value || 0;
+                const cliente = row.getCell(5).value || "";
+                const qVideo = row.getCell(6).value || 0;
+                // La colonna 7 è Contate (vuota nell'export)
+                const noteRaw = row.getCell(8).value;
+                const note = noteRaw ? noteRaw.toString() : "";
 
-    # Colore Rosso Chiaro per Ammanco (Differenza < 0 -> Video > Contate)
-    rosso_fill = PatternFill(
-        start_color="FADBD8", end_color="FADBD8", fill_type="solid"
-    )
-    ws.conditional_formatting.add(
-        f"A2:I{max_row}",
-        FormulaRule(
-            formula=["AND($H2<0, $H2<>'')"], stopIfTrue=True, fill=rosso_fill
-        ),
-    )
+                // Estrai i numeri dalle Note (Automazione Regex)
+                let contate = null;
+                const nums = note.match(/\b\d+\b/g);
+                
+                if (nums) {
+                    contate = nums.reduce((acc, val) => acc + parseInt(val, 10), 0);
+                } else if (qVideo > 0 && note.trim() === "") {
+                    contate = parseFloat(qVideo); // Se ci sono articoli video e non ci sono note, è allineato
+                }
 
-    # Colore Verde Chiaro per Eccedenza (Differenza > 0 -> Video < Contate)
-    verde_fill = PatternFill(
-        start_color="D4EFDF", end_color="D4EFDF", fill_type="solid"
-    )
-    ws.conditional_formatting.add(
-        f"A2:I{max_row}",
-        FormulaRule(
-            formula=["AND($H2>0, $H2<>'')"], stopIfTrue=True, fill=verde_fill
-        ),
-    )
+                // Calcolo scostamenti e stati
+                let diff = "";
+                let stato = "";
 
-    # Auto-adattamento larghezza colonne
-    for col in ws.columns:
-      max_len = max(len(str(cell.value or "")) for cell in col)
-      col_letter = col[0].column_letter
-      ws.column_dimensions[col_letter].width = max(max_len + 3, 12)
+                if (parseFloat(qVideo) === 0) {
+                    stato = "GIACENZA ZERO";
+                } else if (contate === null || contate === "") {
+                    stato = "DA CONTARE";
+                } else {
+                    diff = contate - parseFloat(qVideo);
+                    if (diff === 0) stato = "ALLINEATO";
+                    else if (diff < 0) stato = "AMMANCO (!)";
+                    else stato = "ECCEDENZA (+)";
+                }
 
-  print(
-      f"File elaborato con successo e salvato in: {file_output}"
-  )
+                // Aggiungi la riga elaborata
+                const newRow = worksheetOut.addRow([codice, desc, quantita, cliente, qVideo, contate, note, diff, stato]);
 
+                // Applica Formattazione Condizionale tramite Colori di Sfondo
+                if (parseFloat(qVideo) === 0) {
+                    // Grigio per Giacenza Zero
+                    newRow.eachCell(c => c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD5D8DC' } });
+                } else if (diff !== "" && diff < 0) {
+                    // Rosso per Ammanco
+                    newRow.eachCell(c => c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFADBD8' } });
+                } else if (diff !== "" && diff > 0) {
+                    // Verde per Eccedenza
+                    newRow.eachCell(c => c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD4EFDF' } });
+                }
 
-# Esempio di utilizzo:
-# automatizza_magazzino("export_grezzo.xlsx", "Magazzino_Controllato.xlsx")
+                // Formatta i numeri
+                newRow.getCell(8).font = { bold: true };
+            });
+
+            // Adatta larghezza colonne per leggibilità
+            worksheetOut.columns = [
+                { width: 25 }, { width: 45 }, { width: 15 }, { width: 35 }, 
+                { width: 15 }, { width: 12 }, { width: 50 }, { width: 12 }, { width: 18 }
+            ];
+
+            // Genera il file e lancia il download
+            const buffer = await workbookOut.xlsx.writeBuffer();
+            const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+            const url = window.URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = "Magazzino_Automatizzato.xlsx";
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+            statusDiv.innerHTML = "File elaborato e scaricato con successo! ✔️";
+            statusDiv.className = "success";
+            
+        } catch (error) {
+            console.error(error);
+            statusDiv.innerHTML = "Errore durante l'elaborazione del file. Verifica che sia il formato corretto.";
+            statusDiv.className = "error";
+        } finally {
+            processBtn.disabled = false;
+        }
+    }
+</script>
+
+</body>
+</html>
