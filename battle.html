@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Automazione Brogliaccio Magazzino (Alta Leggibilità)</title>
+    <title>Automazione Brogliaccio Magazzino (Stampa A3)</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; padding: 40px 20px; color: #2C3E50; }
         .container { max-width: 680px; margin: 0 auto; background: white; padding: 35px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
@@ -32,10 +32,10 @@
     <div class="features">
         <strong>⚡ Automazioni attive:</strong>
         <ul>
-            <li>Rimozione automatica dei doppioni (Codice + Descrizione)</li>
-            <li>Ordinamento alfabetico A-Z per Descrizione</li>
-            <li>Righe alte (30px) e caratteri ingranditi (13-14pt)</li>
-            <li>Somma automatica numeri nelle Note e colori scostamenti</li>
+            <li>Rimozione doppioni e ordinamento alfabetico A-Z per Descrizione</li>
+            <li>Righe alte (30px) e caratteri ingranditi (13-14pt) per stampa A3</li>
+            <li><strong>Novità:</strong> Testo su una sola riga con colonne auto-adattate al testo più lungo</li>
+            <li><strong>Novità:</strong> Bordi completi applicati esclusivamente all'interno della griglia dati</li>
         </ul>
     </div>
 
@@ -60,7 +60,7 @@
 
     async function elaboraFile() {
         try {
-            statusDiv.innerHTML = "Elaborazione, rimozione doppioni e ordinamento in corso... ⏳";
+            statusDiv.innerHTML = "Elaborazione e calcolo dimensioni in corso... ⏳";
             statusDiv.className = "";
             processBtn.disabled = true;
 
@@ -74,16 +74,25 @@
             const workbookOut = new ExcelJS.Workbook();
             const worksheetOut = workbookOut.addWorksheet('Magazzino A3');
 
+            // Stile per "Tutti i bordi" da applicare solo alla tabella
+            const bordoTabella = {
+                top: { style: 'thin', color: { argb: 'FF808080' } },
+                left: { style: 'thin', color: { argb: 'FF808080' } },
+                bottom: { style: 'thin', color: { argb: 'FF808080' } },
+                right: { style: 'thin', color: { argb: 'FF808080' } }
+            };
+
             // Intestazioni
             const headers = ["Codice articolo", "Descrizione", "Quantità ERP", "Cliente", "Quantità video", "Contate", "Note", "Differenza", "Stato Controllo"];
             const headerRow = worksheetOut.addRow(headers);
             
-            // Stilo Intestazione (Altezza 35, Font grande 14pt Grassetto)
+            // Stile Intestazione (Altezza 35, Font 14pt Grassetto, NO a capo)
             headerRow.height = 35;
             headerRow.eachCell(cell => {
                 cell.font = { name: 'Segoe UI', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
                 cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2C3E50' } };
-                cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+                cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: false };
+                cell.border = bordoTabella; // Bordo applicato al titolo
             });
 
             // 1. RACCOLTA DATI E RIMOZIONE DOPPIONI
@@ -96,12 +105,11 @@
 
                 const codice = (row.getCell(1).value || "").toString().trim();
                 const desc = (row.getCell(2).value || "").toString().trim();
-                if (!codice && !desc) return; // Salta righe interamente vuote
+                if (!codice && !desc) return; 
 
-                // Controllo doppione: creiamo una chiave unica unendo Codice e Descrizione
                 const uniqueKey = `${codice.toUpperCase()}_${desc.toUpperCase()}`;
                 if (seenDuplicates.has(uniqueKey)) {
-                    return; // È un doppione! Lo saltiamo e non lo aggiungiamo all'elenco.
+                    return; 
                 }
                 seenDuplicates.add(uniqueKey);
 
@@ -109,14 +117,14 @@
                 const cliente = (row.getCell(5).value || "").toString();
                 const qVideo = row.getCell(6).value || 0;
                 const noteRaw = row.getCell(8).value;
-                const note = noteRaw ? noteRaw.toString() : "";
+                const note = noteRaw ? noteRaw.toString().trim() : "";
 
                 // Estrazione Somma Note via Regex
                 let contate = null;
                 const nums = note.match(/\b\d+\b/g);
                 if (nums) {
                     contate = nums.reduce((acc, val) => acc + parseInt(val, 10), 0);
-                } else if (parseFloat(qVideo) > 0 && note.trim() === "") {
+                } else if (parseFloat(qVideo) > 0 && note === "") {
                     contate = parseFloat(qVideo);
                 }
 
@@ -141,23 +149,24 @@
                 });
             });
 
-            // 2. ORDINAMENTO ALFABETICO (Per Colonna B - Descrizione)
+            // 2. ORDINAMENTO ALFABETICO (Colonna B - Descrizione)
             rowsData.sort((a, b) => a.desc.localeCompare(b.desc, 'it', { sensitivity: 'base' }));
 
-            // 3. SCRITTURA NEL NUOVO FOGLIO CON STILE ALTA LEGGIBILITÀ (A3)
+            // 3. SCRITTURA NEL NUOVO FOGLIO CON STILE ALTA LEGGIBILITÀ
             rowsData.forEach(item => {
                 const newRow = worksheetOut.addRow([
                     item.codice, item.desc, item.quantita, item.cliente, 
                     item.qVideo, item.contate, item.note, item.diff, item.stato
                 ]);
 
-                // ALTEZZA RIGA A 30 (Richiesta Specifica)
+                // Altezza riga fissa a 30
                 newRow.height = 30;
 
-                // Formattazione Base: Font grande 13pt per ottima lettura
                 newRow.eachCell((c, colIdx) => {
+                    // Font 13pt di base, NO a capo automatico (wrapText: false)
                     c.font = { name: 'Segoe UI', size: 13, color: { argb: 'FF2C3E50' } };
-                    c.alignment = { vertical: 'middle', wrapText: true };
+                    c.alignment = { vertical: 'middle', wrapText: false };
+                    c.border = bordoTabella; // Applicazione dei bordi solo alla cella della tabella
                     
                     // Colori di Sfondo Condizionali
                     if (item.qVideo === 0) {
@@ -170,36 +179,36 @@
                 });
 
                 // Allineamenti numerici a destra e centratura stato
-                newRow.getCell(3).alignment = { horizontal: 'right', vertical: 'middle' };
-                newRow.getCell(5).alignment = { horizontal: 'right', vertical: 'middle' };
-                newRow.getCell(6).alignment = { horizontal: 'right', vertical: 'middle' };
-                newRow.getCell(8).alignment = { horizontal: 'right', vertical: 'middle' };
-                newRow.getCell(9).alignment = { horizontal: 'center', vertical: 'middle' };
+                newRow.getCell(3).alignment = { horizontal: 'right', vertical: 'middle', wrapText: false };
+                newRow.getCell(5).alignment = { horizontal: 'right', vertical: 'middle', wrapText: false };
+                newRow.getCell(6).alignment = { horizontal: 'right', vertical: 'middle', wrapText: false };
+                newRow.getCell(8).alignment = { horizontal: 'right', vertical: 'middle', wrapText: false };
+                newRow.getCell(9).alignment = { horizontal: 'center', vertical: 'middle', wrapText: false };
 
-                // Font ancora più grandi e robusti per Codice, Contate e Differenze
+                // Font grandi e robusti per elementi chiave
                 newRow.getCell(1).font = { name: 'Segoe UI', size: 13, bold: true }; // Codice
                 newRow.getCell(6).font = { name: 'Segoe UI', size: 14, bold: true }; // Contate (14pt Bold!)
                 newRow.getCell(8).font = { name: 'Segoe UI', size: 14, bold: true }; // Differenza (14pt Bold!)
                 newRow.getCell(9).font = { name: 'Segoe UI', size: 12, bold: true }; // Stato
             });
 
-            // Allargamento Colonne per formato A3
-            worksheetOut.columns = [
-                { width: 28 }, // Codice
-                { width: 55 }, // Descrizione
-                { width: 16 }, // Quantità ERP
-                { width: 38 }, // Cliente
-                { width: 18 }, // Quantità video
-                { width: 15 }, // Contate
-                { width: 55 }, // Note
-                { width: 15 }, // Differenza
-                { width: 20 }  // Stato
-            ];
+            // 4. CALCOLO DINAMICO LARGHEZZA COLONNE (Adattamento al testo più lungo)
+            worksheetOut.columns.forEach((column) => {
+                let maxLen = 0;
+                column.eachCell({ includeEmpty: false }, (cell) => {
+                    const cellValueStr = cell.value !== null && cell.value !== undefined ? cell.value.toString() : "";
+                    if (cellValueStr.length > maxLen) {
+                        maxLen = cellValueStr.length;
+                    }
+                });
+                // Calcolo proporzionato per font grandi (moltiplicatore di sicurezza + margine)
+                column.width = Math.max(Math.ceil(maxLen * 1.3) + 3, 15);
+            });
 
-            // Blocco intestazione (Freeze Panes)
+            // Blocco intestazione in alto (Freeze Panes)
             worksheetOut.views = [{ state: 'frozen', xSplit: 0, ySplit: 1 }];
 
-            // Download
+            // Download del file Excel
             const buffer = await workbookOut.xlsx.writeBuffer();
             const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
             const url = window.URL.createObjectURL(blob);
@@ -212,7 +221,7 @@
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
 
-            statusDiv.innerHTML = "Report A3 generato con successo! Doppioni rimossi e righe ordinate. ✔️";
+            statusDiv.innerHTML = "Report A3 generato! Colonne adattate e bordi applicati. ✔️";
             statusDiv.className = "success";
             
         } catch (error) {
