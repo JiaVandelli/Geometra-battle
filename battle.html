@@ -82,16 +82,16 @@
     <div class="features">
         <strong>⚡ Automazioni attive:</strong>
         <ul>
-            <li>Elabora automaticamente solo l'<strong>ULTIMA PAGINA</strong> dell'Excel</li>
-            <li><strong>Novità:</strong> Controllo intelligente tra <em>Contate</em> e <em>Quantità Video</em> (Verde/Rosso/Bianco)</li>
-            <li><strong>Novità:</strong> Preserva i numeri inseriti manualmente nella colonna Contate</li>
-            <li>Calcolo automatico somma delle Note se la colonna Contate è vuota</li>
-            <li>Rimozione doppioni, ordinamento A-Z, righe alte (30px) e data nel nome file</li>
+            <li><strong>Novità:</strong> Riconoscimento intelligente del formato (non cancella più colonne o righe se il file è già pulito!)</li>
+            <li><strong>Novità:</strong> Segno <strong>+</strong> visibile in automatico per le differenze positive in colonna H</li>
+            <li>Elabora automaticamente l'<strong>ULTIMA PAGINA</strong> dell'Excel</li>
+            <li>Controllo intelligente tra <em>Contate</em> e <em>Quantità Video</em> (Verde/Rosso/Bianco/Grigio)</li>
+            <li>Preserva i numeri manuali su Contate, rimuove doppioni, righe alte (30px) e bordi completi</li>
         </ul>
     </div>
 
     <div class="file-upload">
-        <label for="excelFile"><strong>Seleziona il file Excel grezzo:</strong></label><br>
+        <label for="excelFile"><strong>Seleziona il file Excel:</strong></label><br>
         <input type="file" id="excelFile" accept=".xlsx, .xls">
     </div>
 
@@ -111,7 +111,7 @@
 
     async function elaboraFile() {
         try {
-            statusDiv.innerHTML = "Lettura dell'ultima pagina, elaborazione e calcolo in corso... ⏳";
+            statusDiv.innerHTML = "Analisi struttura file, elaborazione e calcolo in corso... ⏳";
             statusDiv.className = "";
             processBtn.disabled = true;
 
@@ -146,15 +146,40 @@
                 cell.border = bordoTabella;
             }
 
+            // --- 1. ANALISI INTELLIGENTE STRUTTURA DEL FILE (La tua intuizione!) ---
+            const valA1 = (worksheetIn.getCell(1, 1).value || "").toString().trim().toLowerCase();
+            const valB1 = (worksheetIn.getCell(1, 2).value || "").toString().trim();
+            
+            // Se B1 è vuoto o A1 contiene "brogliaccio", è un file grezzo con riga di titolo da saltare!
+            const hasTitleRow = valA1.includes("brogliaccio") || valB1 === "";
+            const headerRowIdx = hasTitleRow ? 2 : 1;
+            const startRow = hasTitleRow ? 3 : 2;
+
+            // Controlliamo se la colonna 3 è la vecchia "UM" o "NR", o se C1/C2 è vuoto nel grezzo
+            const headerCol3 = (worksheetIn.getCell(headerRowIdx, 3).value || "").toString().trim().toUpperCase();
+            const hasUmCol = headerCol3 === "UM" || headerCol3 === "NR" || (hasTitleRow && (worksheetIn.getCell(1, 3).value || "").toString().trim() === "");
+
+            // Mappiamo dinamicamente le colonne in base a come è fatto il file
+            const colMap = {
+                codice: 1,
+                desc: 2,
+                quantita: hasUmCol ? 4 : 3,
+                cliente: hasUmCol ? 5 : 4,
+                qVideo: hasUmCol ? 6 : 5,
+                contate: hasUmCol ? 7 : 6,
+                note: hasUmCol ? 8 : 7,
+                diff: hasUmCol ? 9 : 8 // (se il file elaborato aveva già la differenza)
+            };
+
+            // --- 2. RACCOLTA DATI E RIMOZIONE DOPPIONI ---
             let rowsData = [];
             const seenDuplicates = new Set();
-            let startRow = 3; 
 
             worksheetIn.eachRow((row, rowNumber) => {
                 if (rowNumber < startRow) return;
 
-                const codice = (row.getCell(1).value || "").toString().trim();
-                const desc = (row.getCell(2).value || "").toString().trim();
+                const codice = (row.getCell(colMap.codice).value || "").toString().trim();
+                const desc = (row.getCell(colMap.desc).value || "").toString().trim();
                 if (!codice && !desc) return; 
 
                 const uniqueKey = `${codice.toUpperCase()}_${desc.toUpperCase()}`;
@@ -163,18 +188,18 @@
                 }
                 seenDuplicates.add(uniqueKey);
 
-                const quantita = row.getCell(4).value || 0;
-                const cliente = (row.getCell(5).value || "").toString();
-                const qVideo = row.getCell(6).value || 0;
+                const quantita = row.getCell(colMap.quantita).value || 0;
+                const cliente = (row.getCell(colMap.cliente).value || "").toString();
+                const qVideo = row.getCell(colMap.qVideo).value || 0;
                 
-                // Colonna 7: Contate (se è già stato inserito un numero a mano nel file originale)
-                let contateVal = row.getCell(7).value;
+                // Leggiamo la colonna Contate se esiste già un numero
+                let contateVal = row.getCell(colMap.contate).value;
                 if (contateVal && typeof contateVal === 'object' && contateVal.result !== undefined) {
                     contateVal = contateVal.result;
                 }
 
-                // Colonna 8: Note
-                const noteRaw = row.getCell(8).value;
+                // Leggiamo Note
+                const noteRaw = row.getCell(colMap.note).value;
                 const note = noteRaw ? noteRaw.toString().trim() : "";
 
                 const qVidNum = parseFloat(qVideo.toString().replace(',', '.')) || 0;
@@ -207,8 +232,10 @@
                 });
             });
 
+            // --- 3. ORDINAMENTO ALFABETICO (Colonna B - Descrizione) ---
             rowsData.sort((a, b) => a.desc.localeCompare(b.desc, 'it', { sensitivity: 'base' }));
 
+            // --- 4. SCRITTURA NEL NUOVO FOGLIO ---
             rowsData.forEach(item => {
                 const newRow = worksheetOut.addRow([
                     item.codice, item.desc, item.quantita, item.cliente, 
@@ -236,18 +263,23 @@
                         // GRIGIO per giacenza a zero a gestionale (non ancora verificata o confermata a 0)
                         c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFBFC9CA' } };
                     }
-                    // Se diff === 0 e qVideo > 0 (oppure diff === "" e qVideo > 0), resta BIANCO pulito!
                 }
 
                 newRow.getCell(1).font = Object.assign({}, newRow.getCell(1).font, { size: 13, bold: true });
                 if (item.contate !== "") {
                     newRow.getCell(6).font = Object.assign({}, newRow.getCell(6).font, { size: 14, bold: true });
                 }
+                
+                // FORMATTAZIONE DEL SEGNO PIÙ (+) IN COLONNA H (DIFFERENZA):
                 if (item.diff !== "") {
-                    newRow.getCell(8).font = Object.assign({}, newRow.getCell(8).font, { size: 14, bold: true });
+                    const cDiff = newRow.getCell(8);
+                    cDiff.font = Object.assign({}, cDiff.font, { size: 14, bold: true });
+                    // Questo formato nativo Excel forza il segno + sui positivi, es. "+3", lasciando - sui negativi e 0 normale!
+                    cDiff.numFmt = '+#,##0;-#,##0;0';
                 }
             });
 
+            // --- 5. CALCOLO DINAMICO LARGHEZZA COLONNE ---
             worksheetOut.columns.forEach((column) => {
                 let maxLen = 0;
                 column.eachCell({ includeEmpty: false }, (cell) => {
