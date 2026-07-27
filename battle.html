@@ -84,8 +84,9 @@
         <ul>
             <li>Rimozione doppioni e ordinamento alfabetico A-Z per Descrizione</li>
             <li>Righe alte (30px) e caratteri ingranditi (13-14pt) per stampa A3</li>
-            <li>Testo su una sola riga con colonne auto-adattate al testo più lungo</li>
-            <li>Testo centrato in ogni cella e bordi completi sulla griglia dati</li>
+            <li><strong>Evidenziazione grigia e bordi garantiti su tutta la riga per giacenze a zero</strong></li>
+            <li><strong>Calcolo scostamenti e colori attivi ESCLUSIVAMENTE in presenza di Note</strong></li>
+            <li><strong>Layout pulito a 8 colonne (senza testi superflui di stato)</strong></li>
         </ul>
     </div>
 
@@ -132,18 +133,19 @@
                 right: { style: 'thin', color: { argb: 'FF808080' } }
             };
 
-            // Intestazioni
-            const headers = ["Codice articolo", "Descrizione", "Quantità ERP", "Cliente", "Quantità video", "Contate", "Note", "Differenza", "Stato Controllo"];
+            // Intestazioni pulite a 8 colonne (rimossa la colonna Stato Controllo)
+            const headers = ["Codice articolo", "Descrizione", "Quantità ERP", "Cliente", "Quantità video", "Contate", "Note", "Differenza"];
             const headerRow = worksheetOut.addRow(headers);
             
             // Stile Intestazione (Altezza 35, Font 14pt Grassetto, centrato, NO a capo)
             headerRow.height = 35;
-            headerRow.eachCell(cell => {
+            for (let i = 1; i <= 8; i++) {
+                const cell = headerRow.getCell(i);
                 cell.font = { name: 'Segoe UI', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
                 cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEE0979' } };
                 cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: false };
-                cell.border = bordoTabella; // Bordo applicato al titolo
-            });
+                cell.border = bordoTabella;
+            }
 
             // 1. RACCOLTA DATI E RIMOZIONE DOPPIONI
             let rowsData = [];
@@ -169,71 +171,69 @@
                 const noteRaw = row.getCell(8).value;
                 const note = noteRaw ? noteRaw.toString().trim() : "";
 
-                // Estrazione Somma Note via Regex
-                let contate = null;
-                const nums = note.match(/\b\d+\b/g);
-                if (nums) {
-                    contate = nums.reduce((acc, val) => acc + parseInt(val, 10), 0);
-                } else if (parseFloat(qVideo) > 0 && note === "") {
-                    contate = parseFloat(qVideo);
-                }
-
-                // Calcolo Differenze e Stato
-                let diff = "";
-                let stato = "";
                 const qVidNum = parseFloat(qVideo) || 0;
+                let contate = "";
+                let diff = "";
 
-                if (qVidNum === 0) {
-                    stato = "GIACENZA ZERO";
-                } else if (contate === null || contate === "") {
-                    stato = "DA CONTARE";
-                } else {
-                    diff = contate - qVidNum;
-                    if (diff === 0) stato = "ALLINEATO";
-                    else if (diff < 0) stato = "AMMANCO (!)";
-                    else stato = "ECCEDENZA (+)";
+                // ATTIVAZIONE ESCLUSIVA: Il calcolo e i colori si attivano SOLO se ci sono scritte nelle Note!
+                if (note !== "") {
+                    const nums = note.match(/\b\d+\b/g);
+                    if (nums) {
+                        contate = nums.reduce((acc, val) => acc + parseInt(val, 10), 0);
+                        diff = contate - qVidNum;
+                    }
                 }
+                // Se note === "", contate e diff restano vuoti (""), lasciando il foglio pulito per il primo controllo!
 
                 rowsData.push({
-                    codice, desc, quantita, cliente, qVideo: qVidNum, contate, note, diff, stato
+                    codice, desc, quantita, cliente, qVideo: qVidNum, contate, note, diff
                 });
             });
 
             // 2. ORDINAMENTO ALFABETICO (Colonna B - Descrizione)
             rowsData.sort((a, b) => a.desc.localeCompare(b.desc, 'it', { sensitivity: 'base' }));
 
-            // 3. SCRITTURA NEL NUOVO FOGLIO CON STILE ALTA LEGGIBILITÀ (colori più accesi, testo centrato)
+            // 3. SCRITTURA NEL NUOVO FOGLIO CON STILE ALTA LEGGIBILITÀ
             rowsData.forEach(item => {
                 const newRow = worksheetOut.addRow([
                     item.codice, item.desc, item.quantita, item.cliente, 
-                    item.qVideo, item.contate, item.note, item.diff, item.stato
+                    item.qVideo, item.contate, item.note, item.diff
                 ]);
 
                 // Altezza riga fissa a 30
                 newRow.height = 30;
 
-                newRow.eachCell((c, colIdx) => {
-                    // Font 13pt di base, testo centrato, NO a capo automatico (wrapText: false)
+                // CICLO ESPLICITO DA 1 A 8: Garantisce al 100% che bordi e sfondi siano applicati a tutte le colonne!
+                for (let colIdx = 1; colIdx <= 8; colIdx++) {
+                    const c = newRow.getCell(colIdx);
+                    
+                    // Stile di base per la cella
                     c.font = { name: 'Segoe UI', size: 13, color: { argb: 'FF2C3E50' } };
                     c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: false };
-                    c.border = bordoTabella; // Applicazione dei bordi solo alla cella della tabella
+                    c.border = bordoTabella; // Il bordo viene applicato SEMPRE, anche alle celle vuote
                     
-                    // Colori di Sfondo Condizionali (più accesi e saturi)
+                    // Colori di Sfondo Condizionali
                     if (item.qVideo === 0) {
-                        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFBFC9CA' } }; // Grigio più marcato
+                        // Grigio su TUTTA la riga (dalla colonna 1 alla 8) se giacenza video è zero
+                        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFBFC9CA' } };
                     } else if (item.diff !== "" && item.diff < 0) {
-                        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF7675' } }; // Rosso acceso
+                        // Rosso acceso per ammanco (si attiva solo se diff è stato calcolato via Note)
+                        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF7675' } };
                         c.font = { name: 'Segoe UI', size: 13, color: { argb: 'FFFFFFFF' }, bold: true };
                     } else if (item.diff !== "" && item.diff > 0) {
-                        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF55EFC4' } }; // Verde acceso
+                        // Verde acceso per eccedenza (si attiva solo se diff è stato calcolato via Note)
+                        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF55EFC4' } };
                     }
-                });
+                }
 
-                // Font grandi e robusti per elementi chiave (allineamento già centrato per tutti)
-                newRow.getCell(1).font = { name: 'Segoe UI', size: 13, bold: true }; // Codice
-                newRow.getCell(6).font = { name: 'Segoe UI', size: 14, bold: true }; // Contate (14pt Bold!)
-                newRow.getCell(8).font = Object.assign({}, newRow.getCell(8).font, { size: 14, bold: true }); // Differenza (14pt Bold!)
-                newRow.getCell(9).font = Object.assign({}, newRow.getCell(9).font, { size: 12, bold: true }); // Stato
+                // Font grandi e robusti per elementi chiave
+                newRow.getCell(1).font = Object.assign({}, newRow.getCell(1).font, { size: 13, bold: true }); // Codice
+                if (item.contate !== "") {
+                    newRow.getCell(6).font = Object.assign({}, newRow.getCell(6).font, { size: 14, bold: true }); // Contate (14pt Bold!)
+                }
+                if (item.diff !== "") {
+                    newRow.getCell(8).font = Object.assign({}, newRow.getCell(8).font, { size: 14, bold: true }); // Differenza (14pt Bold!)
+                }
             });
 
             // 4. CALCOLO DINAMICO LARGHEZZA COLONNE (Adattamento al testo più lungo)
@@ -265,7 +265,7 @@
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
 
-            statusDiv.innerHTML = "Report A3 generato! Colonne adattate e bordi applicati. ✔️";
+            statusDiv.innerHTML = "Report A3 generato! Bordi completi e foglio pulito per il controllo. ✔️";
             statusDiv.className = "success";
             
         } catch (error) {
